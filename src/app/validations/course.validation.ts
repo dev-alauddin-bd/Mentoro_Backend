@@ -7,6 +7,7 @@ export const createCourseValidation = z.object({
   categoryId: z.string().uuid("Invalid category ID"),
   thumbnail: z.string().url("Thumbnail must be a valid URL").optional(),
   level: z.enum(["beginner", "intermediate", "advanced"]).optional(),
+  previewVideo: z.string().url("Preview video must be a valid URL").optional(),
   language: z.string().trim().max(50).optional(),
 });
 
@@ -17,6 +18,7 @@ export const updateCourseValidation = z.object({
   categoryId: z.string().uuid("Invalid category ID").optional(),
   thumbnail: z.string().url("Thumbnail must be a valid URL").optional(),
   level: z.enum(["beginner", "intermediate", "advanced"]).optional(),
+  previewVideo: z.string().url("Preview video must be a valid URL").optional(),
   language: z.string().trim().max(50).optional(),
 });
 

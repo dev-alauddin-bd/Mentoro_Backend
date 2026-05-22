@@ -25,6 +25,8 @@ const clearCourseCache = async () => {
 // ============================== CREATE Course ==============================
 const createCourse = async (payload: ICourse) => {
   try {
+    console.log("Incoming Payload:", payload);
+
     const {
       title,
       description,
@@ -35,6 +37,26 @@ const createCourse = async (payload: ICourse) => {
       thumbnail,
     } = payload;
 
+    console.log({
+      title,
+      description,
+      categoryId,
+      instructorId,
+      previewVideo,
+      price,
+      thumbnail,
+    });
+
+    if (
+      !title ||
+      !categoryId ||
+      !instructorId ||
+      !previewVideo ||
+      !thumbnail
+    ) {
+      throw new Error("Required fields missing");
+    }
+
     const result = await prisma.course.create({
       data: {
         title,
@@ -42,16 +64,19 @@ const createCourse = async (payload: ICourse) => {
         categoryId,
         instructorId,
         previewVideo,
-        price,
+        price: Number(price) || 0,
         thumbnail,
       },
     });
 
     await clearCourseCache();
-    return result;
 
+    return result;
   } catch (error) {
-    logger.error("❌ Error creating course:", error);
+    console.error(error);
+
+    logger.error(JSON.stringify(error, null, 2));
+
     throw new CustomAppError(500, "Course creation failed");
   }
 };
@@ -153,7 +178,7 @@ const getAllCourses = async (query: Record<string, unknown>) => {
 
   // Cache result (Wait for cache to be set before returning)
   redis.setex(cacheKey, 300, JSON.stringify(result)).catch(err => logger.error("Redis Cache Error:", err));
-  
+
   return result;
 };
 

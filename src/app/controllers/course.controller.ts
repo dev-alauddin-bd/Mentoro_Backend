@@ -9,9 +9,12 @@ import { sendResponse } from "../utils/sendResponse";
 import logger from "../../lib/logger";
 
 // ============================== CREATE Course ==============================
+
 const createCourse = catchAsyncHandler(async (req: Request, res: Response) => {
+  console.log("Received course creation request with data:", req.body);
   logger.info("Received course creation request with data:", req.body);
   const instructorId = req.user!.id;
+  console.log("Instructor ID from auth middleware:", instructorId);
   const course = await courseService.createCourse({ ...req.body, instructorId });
   
   sendResponse(res, 201, "Course created successfully", course);

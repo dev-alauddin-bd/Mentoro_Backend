@@ -128,68 +128,68 @@ async function main() {
 
   // 7. COURSES & MODULES & LESSONS
   console.log("📚 Seeding 20 courses...");
-  const courses = [
-    { title: "React Mastery", cat: 0, price: 49.99 },
-    { title: "Advanced Node.js", cat: 0, price: 59.99 },
-    { title: "Figma for Pros", cat: 2, price: 39.99 },
-    { title: "Python Data Science", cat: 3, price: 69.99 },
-    { title: "Ethical Hacking", cat: 4, price: 89.99 },
-    { title: "AWS Architecture", cat: 5, price: 99.99 },
-    { title: "SEO Fundamentals", cat: 6, price: 29.99 },
-    { title: "Intro to AI", cat: 7, price: 119.99 },
-    { title: "Unity 3D Games", cat: 8, price: 79.99 },
-    { title: "Blockchain Basics", cat: 9, price: 129.99 },
-    { title: "Vue.js Guide", cat: 0, price: 44.99 },
-    { title: "Docker for Devs", cat: 5, price: 54.99 },
-    { title: "TypeScript Deep Dive", cat: 0, price: 49.99 },
-    { title: "Flutter Essentials", cat: 1, price: 74.99 },
-    { title: "Adobe XD Masterclass", cat: 2, price: 34.99 },
-    { title: "Kubernetes in Practice", cat: 5, price: 104.99 },
-    { title: "Machine Learning with R", cat: 3, price: 94.99 },
-    { title: "Cyber Defense 101", cat: 4, price: 84.99 },
-    { title: "SwiftUI Apps", cat: 1, price: 79.99 },
-    { title: "Go Backend Dev", cat: 0, price: 64.99 },
-  ];
+  // const courses = [
+  //   { title: "React Mastery", cat: 0, price: 49.99 },
+  //   { title: "Advanced Node.js", cat: 0, price: 59.99 },
+  //   { title: "Figma for Pros", cat: 2, price: 39.99 },
+  //   { title: "Python Data Science", cat: 3, price: 69.99 },
+  //   { title: "Ethical Hacking", cat: 4, price: 89.99 },
+  //   { title: "AWS Architecture", cat: 5, price: 99.99 },
+  //   { title: "SEO Fundamentals", cat: 6, price: 29.99 },
+  //   { title: "Intro to AI", cat: 7, price: 119.99 },
+  //   { title: "Unity 3D Games", cat: 8, price: 79.99 },
+  //   { title: "Blockchain Basics", cat: 9, price: 129.99 },
+  //   { title: "Vue.js Guide", cat: 0, price: 44.99 },
+  //   { title: "Docker for Devs", cat: 5, price: 54.99 },
+  //   { title: "TypeScript Deep Dive", cat: 0, price: 49.99 },
+  //   { title: "Flutter Essentials", cat: 1, price: 74.99 },
+  //   { title: "Adobe XD Masterclass", cat: 2, price: 34.99 },
+  //   { title: "Kubernetes in Practice", cat: 5, price: 104.99 },
+  //   { title: "Machine Learning with R", cat: 3, price: 94.99 },
+  //   { title: "Cyber Defense 101", cat: 4, price: 84.99 },
+  //   { title: "SwiftUI Apps", cat: 1, price: 79.99 },
+  //   { title: "Go Backend Dev", cat: 0, price: 64.99 },
+  // ];
 
-  for (const c of courses) {
-    const course = await prisma.course.create({
-      data: {
-        title: c.title,
-        description: `A complete guide to ${c.title}.`,
-        thumbnail: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3",
-        previewVideo: "https://youtube.com/watch?v=sample",
-        price: c.price,
-        instructorId: instructor1.id,
-        categoryId: categories[c.cat]!.id,
-        isPublished: true,
-      }
-    });
+  // for (const c of courses) {
+  //   const course = await prisma.course.create({
+  //     data: {
+  //       title: c.title,
+  //       description: `A complete guide to ${c.title}.`,
+  //       thumbnail: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3",
+  //       previewVideo: "https://youtube.com/watch?v=sample",
+  //       price: c.price,
+  //       instructorId: instructor1.id,
+  //       categoryId: categories[c.cat]!.id,
+  //       isPublished: true,
+  //     }
+  //   });
 
-    const m = await prisma.module.create({
-      data: { title: "Module 1: Getting Started", order: 1, courseId: course.id }
-    });
+  //   const m = await prisma.module.create({
+  //     data: { title: "Module 1: Getting Started", order: 1, courseId: course.id }
+  //   });
 
-    const l = await prisma.lesson.create({
-      data: { title: "Introduction", videoUrl: "https://youtube.com/watch?v=intro", duration: 10, moduleId: m.id, order: 1 }
-    });
+  //   const l = await prisma.lesson.create({
+  //     data: { title: "Introduction", videoUrl: "https://youtube.com/watch?v=intro", duration: 10, moduleId: m.id, order: 1 }
+  //   });
 
-    // Randomly enroll student 1 in some courses
-    if (Math.random() > 0.5) {
-      await prisma.enrollment.create({ data: { userId: student1.id, courseId: course.id } });
-      await prisma.payment.create({
-        data: {
-          amount: c.price,
-          currency: "usd",
-          status: "COMPLETED",
-          type: "COURSE_PURCHASE",
-          userId: student1.id,
-          courseId: course.id,
-          stripePaymentId: `pi_${Math.random().toString(36).substring(7)}`,
-        }
-      });
-      await prisma.completedLesson.create({ data: { userId: student1.id, lessonId: l.id } });
-    }
-  }
+  //   // Randomly enroll student 1 in some courses
+  //   if (Math.random() > 0.5) {
+  //     await prisma.enrollment.create({ data: { userId: student1.id, courseId: course.id } });
+  //     await prisma.payment.create({
+  //       data: {
+  //         amount: c.price,
+  //         currency: "usd",
+  //         status: "COMPLETED",
+  //         type: "COURSE_PURCHASE",
+  //         userId: student1.id,
+  //         courseId: course.id,
+  //         stripePaymentId: `pi_${Math.random().toString(36).substring(7)}`,
+  //       }
+  //     });
+  //     await prisma.completedLesson.create({ data: { userId: student1.id, lessonId: l.id } });
+  //   }
+  // }
 
 
   // 8. NEWSLETTER
