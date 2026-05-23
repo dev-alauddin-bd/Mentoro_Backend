@@ -44,8 +44,22 @@ const getAllSessions = async (query: Record<string, unknown> = {}) => {
     prisma.liveSession.count({ where })
   ]);
 
+  const sessionIds = sessions.map(s => s.id);
+  const registrationCounts = await prisma.liveRegistration.groupBy({
+    by: ['sessionId'],
+    where: { sessionId: { in: sessionIds } },
+    _count: { sessionId: true }
+  });
+
+  const countMap = new Map(registrationCounts.map(rc => [rc.sessionId, rc._count.sessionId]));
+
+  const sessionsWithCount = sessions.map(session => ({
+    ...session,
+    _count: { registrations: countMap.get(session.id) || 0 }
+  }));
+
   return {
-    sessions,
+    sessions: sessionsWithCount,
     total,
     page,
     totalPages: Math.ceil(total / limit)
@@ -55,13 +69,22 @@ const getAllSessions = async (query: Record<string, unknown> = {}) => {
 // ============================== GET Session By ID ==============================
 const getSessionById = async (id: string) => {
   const session = await prisma.liveSession.findUnique({
-    where: { id }
+    where: { id },
   });
+  
   if (!session) {
     throw new CustomAppError(404, "Session not found");
   }
-  return session;
-};
+
+  const registrationsCount = await prisma.liveRegistration.count({
+    where: { sessionId: id }
+  });
+
+  return {
+    ...session,
+    _count: { registrations: registrationsCount }
+  };
+ };
 
 // ============================== CREATE Session ==============================
 const createSession = async (payload: Record<string, unknown>) => {
