@@ -79,18 +79,7 @@ const getMyCourses = catchAsyncHandler(async (req: Request, res: Response) => {
   sendResponse(res, 200, "Enrolled courses fetched successfully", result);
 });
 
-// ============================== REQUEST Feature ==============================
-const requestFeature = catchAsyncHandler(async (req: Request, res: Response) => {
-  const result = await courseService.requestFeature(req.params.id as string, req.user!.id);
-  sendResponse(res, 200, "Featured request sent to Admin", result);
-});
 
-// ============================== APPROVE Feature ==============================
-const approveFeature = catchAsyncHandler(async (req: Request, res: Response) => {
-  const { isFeatured } = req.body;
-  const result = await courseService.approveFeature(req.params.id as string, isFeatured);
-  sendResponse(res, 200, isFeatured ? "Course is now Featured" : "Course featured status removed", result);
-});
 
 export const courseController: CourseController = {
   createCourse,
@@ -101,8 +90,7 @@ export const courseController: CourseController = {
   getMyCourses,
   completeLesson,
   togglePublish,
-  requestFeature,
-  approveFeature
+
 };
 
 type CourseController = {
@@ -114,6 +102,5 @@ type CourseController = {
   getMyCourses: RequestHandler;
   completeLesson: RequestHandler;
   togglePublish: RequestHandler;
-  requestFeature: RequestHandler;
-  approveFeature: RequestHandler;
+
 }

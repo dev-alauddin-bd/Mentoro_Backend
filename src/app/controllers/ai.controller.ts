@@ -41,13 +41,24 @@ const generateQuiz = catchAsyncHandler(async (req: Request, res: Response) => {
   sendResponse(res, 200, "Quiz generated successfully", quiz);
 });
 
+
+const generateContent = catchAsyncHandler(async (req: Request, res: Response) => {
+  const { topic } = req.body;
+  const result = await AiService.generateContent(topic);
+  sendResponse(res, 200, "Content generated successfully", result);
+});
+
 export const AiController: AIController = {
   chatAssistant,
   generateQuiz,
+  generateContent,
+
 };
 
 
 type AIController = {
   chatAssistant: RequestHandler;
   generateQuiz: RequestHandler;
+  generateContent: RequestHandler;
+
 };

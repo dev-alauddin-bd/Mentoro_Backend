@@ -9,6 +9,13 @@ export const createCourseValidation = z.object({
   level: z.enum(["beginner", "intermediate", "advanced"]).optional(),
   previewVideo: z.string().url("Preview video must be a valid URL").optional(),
   language: z.string().trim().max(50).optional(),
+  // New optional fields for richer course metadata
+  learningOutcomes: z.array(z.string()).optional(),
+  requirements: z.array(z.string()).optional(),
+  targetAudience: z.array(z.string()).optional(),
+  tags: z.array(z.string()).optional(),
+  hasCertificate: z.boolean().optional(),
+  isFree: z.boolean().optional(),
 });
 
 export const updateCourseValidation = z.object({
@@ -20,7 +27,15 @@ export const updateCourseValidation = z.object({
   level: z.enum(["beginner", "intermediate", "advanced"]).optional(),
   previewVideo: z.string().url("Preview video must be a valid URL").optional(),
   language: z.string().trim().max(50).optional(),
-});
+  // New optional fields
+  learningOutcomes: z.array(z.string()).optional(),
+  requirements: z.array(z.string()).optional(),
+  targetAudience: z.array(z.string()).optional(),
+  tags: z.array(z.string()).optional(),
+  hasCertificate: z.boolean().optional(),
+  isFree: z.boolean().optional(),
+});;
+
 
 export const completeLessonValidation = z.object({
   lessonId: z.string().uuid("Invalid lesson ID"),

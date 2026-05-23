@@ -51,8 +51,12 @@ model Course {
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
   isDeleted        Boolean      @default(false)
-  featureRequested Boolean      @default(false)
-  isFeatured       Boolean      @default(false)
+  learningOutcomes String[]
+  requirements    String[]
+  targetAudience  String[]
+  tags            String[]
+  hasCertificate  Boolean @default(false)
+  isFree          Boolean @default(false)
   category         Category     @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   instructor       User         @relation("InstructorCourses", fields: [instructorId], references: [id])
   enrolledUsers    Enrollment[]

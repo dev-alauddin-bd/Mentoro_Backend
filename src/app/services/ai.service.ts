@@ -172,7 +172,106 @@ const generateQuiz = async (lessonId: string) => {
   }
 };
 
+
+// ============================== GENERATE CONTENT ==============================
+const generateContent = async (topicOrDraft: string) => {
+  try {
+    const chatModel = getModel();
+
+    const prompt = PromptTemplate.fromTemplate(`
+      Task:
+      Generate complete professional LMS course content based on the topic.
+
+      Input:
+      {topic}
+
+      CRITICAL RULES:
+      1. Return ONLY valid JSON.
+      2. No markdown.
+      3. No extra text.
+      4. Generate realistic professional educational content.
+      5. Description should be engaging and SEO optimized.
+
+      JSON FORMAT:
+      {{
+        "title": "string",
+        "shortDescription": "string",
+        "description": "string",
+        "seoTitle": "string",
+        "seoDescription": "string",
+        "tags": ["tag1", "tag2"],
+        "learningOutcomes": [
+          "outcome 1",
+          "outcome 2"
+        ],
+        "requirements": [
+          "requirement 1",
+          "requirement 2"
+        ],
+        "targetAudience": [
+          "audience 1",
+          "audience 2"
+        ],
+        "level": "BEGINNER",
+        "language": "English",
+        "duration": 120,
+        "categorySuggestion": "Web Development",
+        "thumbnailPrompt": "AI image prompt for thumbnail generation"
+      }}
+
+      IMPORTANT:
+      - title = 3-8 words
+      - shortDescription = 1 sentence
+      - description = 2-4 paragraphs
+      - duration = total minutes
+      - tags = max 8
+      - learningOutcomes = 4-8 items
+      - requirements = 3-5 items
+      - targetAudience = 2-5 items
+    `);
+
+    const chain = prompt
+      .pipe(chatModel)
+      .pipe(new StringOutputParser());
+
+    const response = await chain.invoke({
+      topic: topicOrDraft || "A generic online course",
+    });
+
+    let cleanResponse = response.trim();
+
+    // Remove markdown wrappers
+    if (cleanResponse.startsWith("```json")) {
+      cleanResponse = cleanResponse
+        .replace("```json", "")
+        .replace("```", "")
+        .trim();
+    } else if (cleanResponse.startsWith("```")) {
+      cleanResponse = cleanResponse
+        .replace(/```/g, "")
+        .trim();
+    }
+
+    const parsed = JSON.parse(cleanResponse);
+
+    return {
+      success: true,
+      data: parsed,
+    };
+  } catch (error) {
+    logger.error("Generate Content AI Error:", error);
+
+    throw new CustomAppError(
+      500,
+      "Failed to generate AI content"
+    );
+  }
+};
+
 export const AiService = {
   chatAssistant,
-  generateQuiz
+  generateQuiz,
+  generateContent,
+
 };
+

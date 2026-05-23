@@ -75,10 +75,7 @@ export const paymentService = {
     const course = await prisma.course.findUnique({ where: { id: courseId } });
     if (!course) throw new CustomAppError(404, "Course not found");
     
-    // Check if already featured or requested
-    if (course.isFeatured) throw new CustomAppError(400, "Course is already featured");
-    if (course.featureRequested) throw new CustomAppError(400, "Feature request is already pending");
-
+ 
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new CustomAppError(404, "User not found");
 
@@ -121,52 +118,61 @@ export const paymentService = {
   },
 
   // ============================== VERIFY Payment and ENROLL ==============================
-  async verifyPaymentAndEnroll(sessionId: string) {
-    try {
-      const session = await stripe.checkout.sessions.retrieve(sessionId);
+// ============================== VERIFY Payment and ENROLL ==============================
+async verifyPaymentAndEnroll(sessionId: string) {
+  try {
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
 
-      if (session.payment_status === "paid") {
-        const userId = session.metadata?.userId;
-        const courseId = session.metadata?.courseId;
-
-        if (userId && courseId) {
-          const type = session.metadata?.type || "COURSE_PURCHASE";
-
-          await prisma.$transaction(async (tx) => {
-            // Update payment status
-            await tx.payment.update({
-              where: { stripeSessionId: sessionId },
-              data: {
-                status: "COMPLETED",
-                stripePaymentId: session.payment_intent as string,
-              },
-            });
-
-            if (type === "FEATURED_REQUEST") {
-              // Mark course as feature requested
-              await tx.course.update({
-                where: { id: courseId },
-                data: { featureRequested: true },
-              });
-            } else {
-              // Create enrollment (Standard course purchase)
-              await tx.enrollment.upsert({
-                where: { userId_courseId: { userId, courseId } },
-                create: { userId, courseId },
-                update: {},
-              });
-            }
-          });
-
-          return true;
-        }
-      }
-      return false;
-    } catch (error) {
-      logger.error("❌ Error verifying payment session manually:", error);
+    if (session.payment_status !== "paid") {
       return false;
     }
-  },
+
+    const userId = session.metadata?.userId;
+    const courseId = session.metadata?.courseId;
+
+    if (!userId || !courseId) {
+      logger.error("❌ Missing metadata in Stripe session");
+      return false;
+    }
+
+    await prisma.$transaction(async (tx) => {
+      // Update payment status
+      await tx.payment.update({
+        where: { stripeSessionId: sessionId },
+        data: {
+          status: "COMPLETED",
+          stripePaymentId: session.payment_intent as string,
+        },
+      });
+
+      // Create enrollment
+      await tx.enrollment.upsert({
+        where: {
+          userId_courseId: {
+            userId,
+            courseId,
+          },
+        },
+        create: {
+          userId,
+          courseId,
+        },
+        update: {},
+      });
+    });
+
+    logger.info("✅ Payment verified and enrollment completed", {
+      sessionId,
+      userId,
+      courseId,
+    });
+
+    return true;
+  } catch (error) {
+    logger.error("❌ Error verifying payment session manually:", error);
+    return false;
+  }
+},
 
   // ============================== REFUND Course ==============================
   async refundCourse(userId: string, courseId: string) {

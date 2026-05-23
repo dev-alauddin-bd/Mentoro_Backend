@@ -44,10 +44,5 @@ router.patch("/:id/toggle-publish", protect, authorize(UserRole.ADMIN, UserRole.
 // ============================== DELETE Course (ADMIN) ==============================
 router.delete("/:id", protect, authorize(UserRole.ADMIN), courseController.deleteCourse);
 
-// ============================== FEATURED REQUEST (REMOVED - Use Payment Route) ==============================
-// router.post("/:id/request-feature", protect, authorize(UserRole.INSTRUCTOR), courseController.requestFeature);
-
-// ============================== FEATURED APPROVE (ADMIN) ==============================
-router.patch("/:id/approve-feature", protect, authorize(UserRole.ADMIN), courseController.approveFeature);
 
 export const courseRouter: Router = router;

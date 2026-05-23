@@ -14,8 +14,7 @@ export interface ICourse {
   instructorId: string;
   instructor?: IUser;
   isPublished: boolean;
-  isFeatured: boolean;
-  featureRequested: boolean;
+
   categoryId: string;
 
 
@@ -25,7 +24,16 @@ export interface ICourse {
   updatedAt: string | Date;
   _count?: {
     enrolledUsers: number;
-  };
+  }
+
+  // New fields added for richer course metadata
+  learningOutcomes?: string[];
+  requirements?: string[];
+  targetAudience?: string[];
+  tags?: string[];
+  hasCertificate?: boolean;
+  isFree?: boolean;
+
 }
 
 export interface IModule {

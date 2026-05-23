@@ -35,6 +35,12 @@ const createCourse = async (payload: ICourse) => {
       previewVideo,
       price,
       thumbnail,
+      learningOutcomes,
+      requirements,
+      targetAudience,
+      tags,
+      hasCertificate,
+      isFree,
     } = payload;
 
     console.log({
@@ -47,22 +53,18 @@ const createCourse = async (payload: ICourse) => {
       thumbnail,
     });
 
-    if (
-      !title ||
-      !categoryId ||
-      !instructorId ||
-      !previewVideo ||
-      !thumbnail
-    ) {
-      throw new Error("Required fields missing");
-    }
-
     const result = await prisma.course.create({
       data: {
         title,
         description,
         categoryId,
         instructorId,
+        learningOutcomes,
+        requirements,
+        targetAudience,
+        tags,
+        hasCertificate,
+        isFree,
         previewVideo,
         price: Number(price) || 0,
         thumbnail,
@@ -444,39 +446,9 @@ const getRecommendations = async (userId: string) => {
   }
 };
 
-// ============================== REQUEST Feature ==============================
-const requestFeature = async (id: string, instructorId: string) => {
-  const course = await prisma.course.findUnique({ where: { id } });
-  if (!course) throw new CustomAppError(404, "Course not found");
-  if (course.instructorId !== instructorId) throw new CustomAppError(403, "You can only request features for your own courses");
 
-  const result = await prisma.course.update({
-    where: { id },
-    data: { featureRequested: true },
-  });
 
-  await clearCourseCache();
-  return result;
 
-};
-
-// ============================== APPROVE Feature ==============================
-const approveFeature = async (id: string, isFeatured: boolean) => {
-  const course = await prisma.course.findUnique({ where: { id } });
-  if (!course) throw new CustomAppError(404, "Course not found");
-
-  const result = await prisma.course.update({
-    where: { id },
-    data: {
-      isFeatured,
-      featureRequested: false // Reset request status after admin action
-    },
-  });
-
-  await clearCourseCache();
-  return result;
-
-};
 
 export const courseService = {
   createCourse,
@@ -488,6 +460,6 @@ export const courseService = {
   completeLesson,
   togglePublish,
   getRecommendations,
-  requestFeature,
-  approveFeature
+
+
 };
