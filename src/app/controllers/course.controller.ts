@@ -63,7 +63,7 @@ const updateCourse = catchAsyncHandler(async (req: Request, res: Response) => {
 
 // ============================== DELETE Course ==============================
 const deleteCourse = catchAsyncHandler(async (req: Request, res: Response) => {
-  const result = await courseService.deleteCourse(req.params.id as string);
+  const result = await courseService.deleteCourse(req.params.id as string, req.user);
   sendResponse(res, 200, result.message);
 });
 

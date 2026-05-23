@@ -42,7 +42,7 @@ router.put("/:id", protect, authorize(UserRole.ADMIN, UserRole.INSTRUCTOR), vali
 router.patch("/:id/toggle-publish", protect, authorize(UserRole.ADMIN, UserRole.INSTRUCTOR), courseController.togglePublish);
 
 // ============================== DELETE Course (ADMIN) ==============================
-router.delete("/:id", protect, authorize(UserRole.ADMIN), courseController.deleteCourse);
+router.delete("/:id", protect, authorize(UserRole.ADMIN, UserRole.INSTRUCTOR), courseController.deleteCourse);
 
 
 export const courseRouter: Router = router;

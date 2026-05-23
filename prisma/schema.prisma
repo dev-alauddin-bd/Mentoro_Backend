@@ -22,6 +22,7 @@ model User {
   enrolledCourses       Enrollment[]
   payments              Payment[]
   reviews               Review[]
+  quizSubmissions       QuizSubmission[]
 
   @@index([role])
   @@index([status])
@@ -79,6 +80,7 @@ model Module {
   isDeleted   Boolean      @default(false)
   assignments Assignment[]
   lessons     Lesson[]
+  quiz        Quiz?
   course      Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
 
   @@index([courseId])
@@ -200,6 +202,49 @@ model AssignmentSubmission {
   @@index([userId])
   @@index([assignmentId])
   @@map("assignment_submissions")
+}
+
+// ── Quiz (Instructor-created, stored in DB) ───────────────────────────────────
+model Quiz {
+  id          String         @id @default(uuid())
+  moduleId    String         @unique
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  module      Module         @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  questions   QuizQuestion[]
+  submissions QuizSubmission[]
+
+  @@map("quizzes")
+}
+
+model QuizQuestion {
+  id            String   @id @default(uuid())
+  quizId        String
+  question      String
+  options       String[]
+  correctAnswer String
+  order         Int      @default(0)
+  quiz          Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+
+  @@index([quizId])
+  @@map("quiz_questions")
+}
+
+model QuizSubmission {
+  id          String   @id @default(uuid())
+  quizId      String
+  userId      String
+  score       Int
+  total       Int
+  percentage  Float
+  submittedAt DateTime @default(now())
+  quiz        Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, quizId])
+  @@index([quizId])
+  @@index([userId])
+  @@map("quiz_submissions")
 }
 
 model LiveSession {

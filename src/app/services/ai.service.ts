@@ -111,8 +111,21 @@ const chatAssistant = async (message: string, history: unknown[]) => {
 };
 
 // ============================== GENERATE Quiz ==============================
+
+// Simple in-memory cache: lessonId → { questions, expiresAt }
+const quizCache = new Map<string, { questions: unknown; expiresAt: number }>();
+const QUIZ_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+
 const generateQuiz = async (lessonId: string) => {
   try {
+    // ── 1. Return cached quiz if still valid ──────────────────────────────────
+    const cached = quizCache.get(lessonId);
+    if (cached && cached.expiresAt > Date.now()) {
+      logger.info(`[Quiz Cache HIT] lessonId=${lessonId}`);
+      return cached.questions;
+    }
+
+    // ── 2. Fetch lesson from DB ───────────────────────────────────────────────
     const chatModel = getModel();
 
     const lesson = await prisma.lesson.findUnique({
@@ -137,6 +150,7 @@ const generateQuiz = async (lessonId: string) => {
     const courseTitle = lesson.module?.course?.title || "N/A";
     const moduleTitle = lesson.module?.title || "N/A";
 
+    // ── 3. Generate via AI ────────────────────────────────────────────────────
     const prompt = PromptTemplate.fromTemplate(`
       Task: Generate a 5-question MCQ quiz.
       Context:
@@ -165,7 +179,16 @@ const generateQuiz = async (lessonId: string) => {
       response.lastIndexOf("]") + 1
     );
 
-    return JSON.parse(cleanResponse);
+    const questions = JSON.parse(cleanResponse);
+
+    // ── 4. Store in cache ─────────────────────────────────────────────────────
+    quizCache.set(lessonId, {
+      questions,
+      expiresAt: Date.now() + QUIZ_CACHE_TTL_MS,
+    });
+    logger.info(`[Quiz Cache SET] lessonId=${lessonId}`);
+
+    return questions;
   } catch (error) {
     logger.error("Quiz AI Error:", error);
     throw error;

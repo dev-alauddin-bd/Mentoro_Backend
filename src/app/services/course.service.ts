@@ -12,7 +12,7 @@ import { Prisma } from "@prisma/client";
 // ============================== HELPER: Clear Course Cache ==============================
 const clearCourseCache = async () => {
   try {
-    const keys = await redis.keys("courses:*");
+    const keys = await redis.keys("courses_v2:*");
     if (keys.length > 0) {
       await redis.del(...keys);
       logger.info(`🧹 Cleared ${keys.length} course cache keys`);
@@ -66,7 +66,7 @@ const createCourse = async (payload: ICourse) => {
         hasCertificate,
         isFree,
         previewVideo,
-        price: Number(price) || 0,
+        price: isFree ? 0 : (Number(price) || 0),
         thumbnail,
       },
     });
@@ -90,14 +90,16 @@ const getAllCourses = async (query: Record<string, unknown>) => {
   const skip = (page - 1) * limit;
 
   // Check cache first
-  const cacheKey = `courses:${page}:${limit}:${query.search as string}:${query.category as string}:${query.sort as string}`;
+  const cacheKey = `courses_v2:${page}:${limit}:${query.search as string}:${query.category as string}:${query.sort as string}`;
   const cachedData = await redis.get(cacheKey);
 
   if (cachedData) {
     return JSON.parse(cachedData);
   }
 
-  const where: Record<string, unknown> = {};
+  const where: Record<string, unknown> = {
+    isDeleted: false,
+  };
 
   // Filter By Publish Status
   if (query.instructorId && query.instructorId !== 'undefined') {
@@ -160,9 +162,19 @@ const getAllCourses = async (query: Record<string, unknown>) => {
       select: {
         id: true,
         title: true,
+        description: true,
+        previewVideo: true,
         price: true,
         thumbnail: true,
         createdAt: true,
+        categoryId: true,
+        isFree: true,
+        hasCertificate: true,
+        learningOutcomes: true,
+        requirements: true,
+        targetAudience: true,
+        tags: true,
+        isPublished: true,
         category: { select: { id: true, name: true } },
         instructor: { select: { name: true, avatar: true } },
         _count: { select: { enrolledUsers: true } },
@@ -188,7 +200,7 @@ const getAllCourses = async (query: Record<string, unknown>) => {
 // ============================== GET Course By ID ==============================
 const getCourseById = async (id: string, userId?: string) => {
   const course = await prisma.course.findUnique({
-    where: { id },
+    where: { id, isDeleted: false },
     select: {
       id: true,
       title: true,
@@ -200,6 +212,12 @@ const getCourseById = async (id: string, userId?: string) => {
       isPublished: true,
       createdAt: true,
       updatedAt: true,
+      learningOutcomes: true,
+      requirements: true,
+      targetAudience: true,
+      tags: true,
+      hasCertificate: true,
+      isFree: true,
       category: { select: { id: true, name: true } },
       instructor: { select: { name: true, avatar: true } },
       modules: {
@@ -248,9 +266,13 @@ const getCourseById = async (id: string, userId?: string) => {
 
 // ============================== UPDATE Course ==============================
 const updateCourse = async (id: string, payload: Partial<ICourse>) => {
-  const existing = await prisma.course.findUnique({ where: { id } });
+  const existing = await prisma.course.findUnique({ where: { id, isDeleted: false } });
   if (!existing) {
     throw new CustomAppError(404, "Unable to update: Course not found");
+  }
+
+  if (payload.isFree) {
+    payload.price = 0;
   }
 
   const result = await prisma.course.update({
@@ -290,13 +312,17 @@ const togglePublish = async (id: string) => {
 };
 
 // ============================== DELETE Course ==============================
-const deleteCourse = async (id: string) => {
-  const existing = await prisma.course.findUnique({ where: { id } });
+const deleteCourse = async (id: string, user?: any) => {
+  const existing = await prisma.course.findUnique({ where: { id, isDeleted: false } });
   if (!existing) {
     throw new CustomAppError(404, "Unable to delete: Course not found");
   }
 
-  await prisma.course.delete({ where: { id } });
+  if (user && user.role !== 'admin' && existing.instructorId !== user.id) {
+    throw new CustomAppError(403, "You are not authorized to delete this course");
+  }
+
+  await prisma.course.update({ where: { id }, data: { isDeleted: true, isPublished: false } });
   await clearCourseCache();
   return { message: "Course has been successfully deleted from the server" };
 };
