@@ -1,7 +1,3 @@
-//  ====================
-//       AI Service
-// ====================
-
 import "dotenv/config";
 import { ChatOpenAI } from "@langchain/openai";
 import { PromptTemplate } from "@langchain/core/prompts";
@@ -10,10 +6,10 @@ import { prisma } from "../../lib/prisma";
 import logger from "../../lib/logger";
 import { CustomAppError } from "../errors/customError";
 
-// Helper function to get the model via OpenRouter
+// ================= MODEL =================
 const getModel = () => {
   if (!process.env.OPENROUTER_API_KEY) {
-    throw new CustomAppError(500, "OPENROUTER_API_KEY is not defined in environment variables");
+    throw new CustomAppError(500, "OPENROUTER_API_KEY is missing");
   }
 
   return new ChatOpenAI({
@@ -30,170 +26,128 @@ const getModel = () => {
   });
 };
 
-// ============================== CHAT Assistant ==============================
+// ================= SAFE JSON EXTRACTOR =================
+const extractJSON = (text: string) => {
+  let clean = text.trim().replace(/```json|```/g, "");
+
+  const start = clean.indexOf("{") !== -1 ? clean.indexOf("{") : clean.indexOf("[");
+  const end = clean.lastIndexOf("}");
+
+  if (start === -1 || end === -1) {
+    throw new Error("Invalid AI JSON response");
+  }
+
+  return clean.slice(start, end + 1);
+};
+
+// ================= QUIZ CACHE =================
+const quizCache = new Map<string, { data: any; expires: number }>();
+const CACHE_TTL = 24 * 60 * 60 * 1000;
+
+// ================= CHAT ASSISTANT =================
 const chatAssistant = async (message: string, history: unknown[]) => {
   try {
-    const chatModel = getModel();
+    const model = getModel();
 
-    // 1. Extract keywords for better RAG search
-    const cleanMessage = message.toLowerCase()
-      .replace(/give|me|show|course|what|is|how|to|the|a|an/g, "")
-      .trim();
+    const prompt = PromptTemplate.fromTemplate(`
+You are CourseMaster AI Assistant.
 
-    const words = cleanMessage.split(/\s+/).filter(w => w.length > 2);
+Context: {context}
+History: {history}
+User: {message}
 
-    const searchFilter = words.length > 0
-      ? words.flatMap(word => [
-        { title: { contains: word, mode: 'insensitive' as const } },
-        { description: { contains: word, mode: 'insensitive' as const } },
-        { category: { name: { contains: word, mode: 'insensitive' as const } } }
-      ])
-      : [
-        { title: { contains: message, mode: 'insensitive' as const } },
-        { description: { contains: message, mode: 'insensitive' as const } }
-      ];
+Answer clearly in same language.
+`);
 
-    // 2. Fetch relevant context in parallel
-    const [relevantCourses, relevantLessons] = await Promise.all([
-      prisma.course.findMany({
-        where: { OR: searchFilter },
-        take: 3,
-        select: {
-          title: true,
-          description: true,
-          thumbnail: true,
-          category: { select: { name: true } }
-        }
-      }),
-      prisma.lesson.findMany({
-        where: {
-          OR: words.length > 0
-            ? words.flatMap(word => [
-              { title: { contains: word, mode: 'insensitive' as const } },
-              { content: { contains: word, mode: 'insensitive' as const } }
-            ])
-            : [{ title: { contains: message, mode: 'insensitive' as const } }]
-        },
-        take: 2,
-        select: { title: true, content: true }
-      })
+    const [courses, lessons] = await Promise.all([
+      prisma.course.findMany({ take: 3 }),
+      prisma.lesson.findMany({ take: 2 }),
     ]);
 
-    const context = JSON.stringify({ courses: relevantCourses, lessons: relevantLessons });
+    const context = JSON.stringify({ courses, lessons });
 
-    // 3. Updated Prompt
-    const prompt = PromptTemplate.fromTemplate(`
-      You are "CourseMaster AI Assistant". 
-      
-      CRITICAL INSTRUCTIONS:
-      1. ALWAYS respond in the SAME LANGUAGE as the user's last message.
-      2. Use Markdown for formatting (bold, bullet points, headers).
-      3. Use the provided Context to answer. If a course matches, mention its Category, Title, and Description.
-      
-      Context from Database: {context}
-      
-      User History: {history}
-      User Question: {message}
-      
-      AI Response:`);
-
-    const chain = prompt.pipe(chatModel).pipe(new StringOutputParser());
+    const chain = prompt.pipe(model).pipe(new StringOutputParser());
 
     return await chain.stream({
       message,
       history: JSON.stringify(history),
-      context: context
+      context,
     });
   } catch (error) {
-    logger.error("Chat AI Error (Formatted RAG):", error);
+    logger.error("Chat Error:", error);
     throw error;
   }
 };
 
-// ============================== GENERATE Quiz ==============================
-
-// Simple in-memory cache: lessonId → { questions, expiresAt }
-const quizCache = new Map<string, { questions: unknown; expiresAt: number }>();
-const QUIZ_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
-
-const generateQuiz = async (lessonId: string) => {
+// ================= MODULE QUIZ (FIXED) =================
+const generateModuleQuiz = async (moduleId: string) => {
   try {
-    // ── 1. Return cached quiz if still valid ──────────────────────────────────
-    const cached = quizCache.get(lessonId);
-    if (cached && cached.expiresAt > Date.now()) {
-      logger.info(`[Quiz Cache HIT] lessonId=${lessonId}`);
-      return cached.questions;
+    const cached = quizCache.get(moduleId);
+    if (cached && cached.expires > Date.now()) {
+      return cached.data;
     }
 
-    // ── 2. Fetch lesson from DB ───────────────────────────────────────────────
-    const chatModel = getModel();
+    const model = getModel();
 
-    const lesson = await prisma.lesson.findUnique({
-      where: { id: lessonId },
+    const moduleData = await prisma.module.findUnique({
+      where: { id: moduleId },
       select: {
-        id: true,
         title: true,
-        content: true,
-        module: {
-          select: {
-            title: true,
-            course: { select: { title: true } }
-          }
-        }
-      }
+        course: { select: { title: true } },
+        lessons: { select: { title: true, content: true } },
+      },
     });
 
-    if (!lesson) {
-      throw new CustomAppError(404, "Lesson not found");
+    if (!moduleData) {
+      throw new CustomAppError(404, "Module not found");
     }
 
-    const courseTitle = lesson.module?.course?.title || "N/A";
-    const moduleTitle = lesson.module?.title || "N/A";
+    const content = moduleData.lessons
+      .map((l) => `Lesson: ${l.title}\n${l.content || ""}`)
+      .join("\n\n");
 
-    // ── 3. Generate via AI ────────────────────────────────────────────────────
     const prompt = PromptTemplate.fromTemplate(`
-      Task: Generate a 5-question MCQ quiz.
-      Context:
-      - Course: {courseTitle}
-      - Module: {moduleTitle}
-      - Lesson: {lessonTitle}
-      - Content: {content}
+Generate 10 MCQ questions from module content.
 
-      CRITICAL:
-      1. Return ONLY a JSON array. 
-      2. Questions MUST be strictly based on the provided content.
-      3. Format: [{{ "question": "string", "options": ["a", "b", "c", "d"], "correctAnswer": "string" }}]
-    `);
+COURSE: {course}
+MODULE: {module}
 
-    const chain = prompt.pipe(chatModel).pipe(new StringOutputParser());
+CONTENT:
+{content}
+
+Return ONLY JSON array:
+[
+  {
+    "question": "",
+    "options": ["A","B","C","D"],
+    "correctAnswer": ""
+  }
+]
+`);
+
+    const chain = prompt.pipe(model).pipe(new StringOutputParser());
 
     const response = await chain.invoke({
-      courseTitle,
-      moduleTitle,
-      lessonTitle: lesson.title,
-      content: lesson.content || "General knowledge about " + lesson.title,
+      course: moduleData.course?.title || "",
+      module: moduleData.title,
+      content,
     });
 
-    const cleanResponse = response.substring(
-      response.indexOf("["),
-      response.lastIndexOf("]") + 1
-    );
+    const json = extractJSON(response);
+    const parsed = JSON.parse(json);
 
-    const questions = JSON.parse(cleanResponse);
-
-    // ── 4. Store in cache ─────────────────────────────────────────────────────
-    quizCache.set(lessonId, {
-      questions,
-      expiresAt: Date.now() + QUIZ_CACHE_TTL_MS,
+    quizCache.set(moduleId, {
+      data: parsed,
+      expires: Date.now() + CACHE_TTL,
     });
-    logger.info(`[Quiz Cache SET] lessonId=${lessonId}`);
 
-    return questions;
+    return { success: true, data: parsed };
   } catch (error) {
-    logger.error("Quiz AI Error:", error);
+    logger.error("Module Quiz Error:", error);
     throw error;
   }
 };
+
 
 
 // ============================== GENERATE CONTENT ==============================
@@ -291,10 +245,51 @@ const generateContent = async (topicOrDraft: string) => {
   }
 };
 
+// ================= LIVE SESSION =================
+// ================= LIVE SESSION =================
+
+
+const generateLiveSessionContent = async (title: string) => {
+  console.log(title)
+  try {
+    const model = getModel();
+
+    const prompt = PromptTemplate.fromTemplate(`
+Create LIVE SESSION content in JSON.
+
+TITLE: {title}
+
+Generate a detailed full description, learning outcomes, who should attend, key topics, and SEO keywords for the live session.
+
+Format:
+{{
+  "title": "{title}",
+  "fullDescription": "",
+  "learningOutcomes": [],
+  "whoShouldAttend": [],
+  "keyTopics": [],
+  "seoKeywords": []
+}}
+`);
+
+    const chain = prompt.pipe(model).pipe(new StringOutputParser());
+    const response = await chain.invoke({ title });
+    const json = extractJSON(response);
+    return {
+      success: true,
+      data: JSON.parse(json),
+    };
+  } catch (error) {
+    logger.error("Live Session Error:", error);
+    throw new CustomAppError(500, "Live session generation failed");
+  }
+};
+
+// ================= EXPORT =================
 export const AiService = {
   chatAssistant,
-  generateQuiz,
+  generateModuleQuiz,
   generateContent,
-
+  generateLiveSessionContent,
 };
 

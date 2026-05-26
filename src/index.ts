@@ -76,7 +76,7 @@ const whitelist = process.env.IP_WHITELIST?.split(",") || [];
 // ==============================
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100,
+  max: 200,
   message: {
     success: false,
     message: "Too many requests. Try later.",
@@ -87,11 +87,11 @@ const limiter = rateLimit({
 
 // ==============================
 // RATE LIMIT — AUTH routes (stricter: 10 req / 15 min)
-// Protects login/signup from brute-force and credential-stuffing attacks.
+// authentications login/signup from brute-force and credential-stuffing attacks.
 // ==============================
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 10,
+  max: 100,
   message: {
     success: false,
     message: "Too many authentication attempts. Please try again later.",

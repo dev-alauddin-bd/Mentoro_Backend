@@ -4,7 +4,7 @@
 
 import { Router } from "express";
 import { lessonController } from "../controllers/lesson.controller";
-import { authorize, protect } from "../middlewares/auth.middleware";
+import { authorization, authentication } from "../middlewares/auth.middleware";
 import { validate } from "../middlewares/validate.middleware";
 import { UserRole } from "../interfaces/user.interface";
 import {
@@ -15,23 +15,23 @@ import {
 const router = Router();
 
 // ============================== ADD Lesson (INSTRUCTOR) ==============================
-router.post("/", protect, authorize(UserRole.INSTRUCTOR), validate(createLessonValidation), lessonController.addLesson);
+router.post("/", authentication, authorization(UserRole.INSTRUCTOR), validate(createLessonValidation), lessonController.addLesson);
 
 // ============================== GET ALL Lessons ==============================
-router.get("/", protect, authorize(UserRole.INSTRUCTOR, UserRole.STUDENT), lessonController.getAllLessons);
+router.get("/", authentication, authorization(UserRole.INSTRUCTOR, UserRole.STUDENT), lessonController.getAllLessons);
 
 // ==============================
 // DYNAMIC ROUTES (with :id param) - must come last
 // ==============================
 
 // ============================== GET Lesson By ID ==============================
-router.get("/:lessonId", protect, authorize(UserRole.INSTRUCTOR, UserRole.STUDENT), lessonController.getLessonById);
+router.get("/:lessonId", authentication, authorization(UserRole.INSTRUCTOR, UserRole.STUDENT), lessonController.getLessonById);
 
 // ============================== UPDATE Lesson (INSTRUCTOR) ==============================
-router.patch("/:lessonId", protect, authorize(UserRole.INSTRUCTOR), validate(updateLessonValidation), lessonController.updateLesson);
+router.patch("/:lessonId", authentication, authorization(UserRole.INSTRUCTOR), validate(updateLessonValidation), lessonController.updateLesson);
 
 // ============================== DELETE Lesson (INSTRUCTOR) ==============================
-router.delete("/:lessonId", protect, authorize(UserRole.INSTRUCTOR), lessonController.deleteLesson);
+router.delete("/:lessonId", authentication, authorization(UserRole.INSTRUCTOR), lessonController.deleteLesson);
 
 export const lessonRouter: Router = router;
 

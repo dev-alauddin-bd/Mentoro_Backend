@@ -5,6 +5,7 @@
 import { prisma } from "../../lib/prisma";
 import { CustomAppError } from "../errors/customError";
 import { Prisma } from "@prisma/client";
+import { LiveSession } from "../interfaces/liveSession.interface";
 
 // ============================== REGISTER For Session ==============================
 const registerForSession = async (payload: { sessionId: string; name: string; email: string; phone: string }) => {
@@ -71,7 +72,7 @@ const getSessionById = async (id: string) => {
   const session = await prisma.liveSession.findUnique({
     where: { id },
   });
-  
+
   if (!session) {
     throw new CustomAppError(404, "Session not found");
   }
@@ -84,23 +85,63 @@ const getSessionById = async (id: string) => {
     ...session,
     _count: { registrations: registrationsCount }
   };
- };
+};
 
 // ============================== CREATE Session ==============================
-const createSession = async (payload: Record<string, unknown>) => {
-  return await prisma.liveSession.create({
-    data: payload as unknown as Prisma.LiveSessionCreateInput
+const createSession = async (payload: LiveSession) => {
+  const {
+    sessionDate,
+    sessionTime,
+    registrationDeadlineDate,
+    registrationDeadlineTime,
+    ...rest
+  } = payload;
+
+  // Combine date and time fields if both parts are provided
+  const sessionDateTime = sessionDate && sessionTime ? new Date(`${sessionDate}T${sessionTime}`).toISOString() : undefined;
+  const registrationDeadlineDateTime = registrationDeadlineDate && registrationDeadlineTime ? new Date(`${registrationDeadlineDate}T${registrationDeadlineTime}`).toISOString() : undefined;
+
+  const data: any = {
+    ...rest,
+    // Prefer combined datetime; if not provided, fall back to date-only values
+    sessionDate: sessionDateTime ?? (sessionDate ? new Date(sessionDate).toISOString() : undefined),
+    registrationDeadline: registrationDeadlineDateTime ?? (registrationDeadlineDate ? new Date(registrationDeadlineDate).toISOString() : undefined),
+  };
+
+  const newSession = await prisma.liveSession.create({
+    data,
   });
+
+  return newSession;
 };
 
 // ============================== UPDATE Session ==============================
-const updateSession = async (id: string, payload: Record<string, unknown>) => {
+const updateSession = async (id: string, payload: Record<string, any>) => {
+  // Combine date and time fields into ISO strings for Prisma if provided
+  const sessionDateTime = payload.sessionDate && payload.sessionTime
+    ? new Date(`${payload.sessionDate}T${payload.sessionTime}`).toISOString()
+    : undefined;
+  const registrationDeadlineDateTime = payload.registrationDeadlineDate && payload.registrationDeadlineTime
+    ? new Date(`${payload.registrationDeadlineDate}T${payload.registrationDeadlineTime}`).toISOString()
+    : undefined;
+
+  // Build the data object, overriding with combined fields and removing split parts
+  const data: any = {
+    ...payload,
+    sessionDate: sessionDateTime ?? payload.sessionDate,
+    registrationDeadline: registrationDeadlineDateTime ?? payload.registrationDeadlineDate,
+    // Remove raw split fields to avoid unexpected columns
+    sessionTime: undefined,
+    registrationDeadlineTime: undefined,
+    registrationDeadlineDate: undefined,
+  };
+
   const session = await prisma.liveSession.findUnique({ where: { id } });
   if (!session) throw new CustomAppError(404, "Session not found for update");
 
   return await prisma.liveSession.update({
     where: { id },
-    data: payload as unknown as Prisma.LiveSessionUpdateInput
+    data: data as unknown as Prisma.LiveSessionUpdateInput,
   });
 };
 

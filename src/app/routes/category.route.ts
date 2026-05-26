@@ -4,7 +4,7 @@
 
 import { Router } from "express";
 import { categoryController } from "../controllers/category.controller";
-import { protect, authorize } from "../middlewares/auth.middleware";
+import { authentication, authorization } from "../middlewares/auth.middleware";
 import { validate } from "../middlewares/validate.middleware";
 import { UserRole } from "../interfaces/user.interface";
 import {
@@ -18,17 +18,17 @@ const router = Router();
 router.get("/", categoryController.getCategories);
 
 // ============================== CREATE Category (ADMIN) ==============================
-router.post("/", protect, authorize(UserRole.ADMIN, UserRole.INSTRUCTOR), validate(createCategoryValidation), categoryController.createCategory);
+router.post("/", authentication, authorization(UserRole.ADMIN, UserRole.INSTRUCTOR), validate(createCategoryValidation), categoryController.createCategory);
 
 // ==============================
 // DYNAMIC ROUTES (with :id param) - must come last
 // ==============================
 
 // ============================== UPDATE Category (ADMIN) ==============================
-router.put("/:id", protect, authorize(UserRole.ADMIN), validate(updateCategoryValidation), categoryController.updateCategory);
+router.put("/:id", authentication, authorization(UserRole.ADMIN), validate(updateCategoryValidation), categoryController.updateCategory);
 
 // ============================== DELETE Category (ADMIN) ==============================
-router.delete("/:id", protect, authorize(UserRole.ADMIN), categoryController.deleteCategory);
+router.delete("/:id", authentication, authorization(UserRole.ADMIN), categoryController.deleteCategory);
 
 export const categoryRouter: Router = router;
 

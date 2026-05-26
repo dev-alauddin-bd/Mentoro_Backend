@@ -1,30 +1,40 @@
-//  ====================
-//       AI Routes
-// ====================
-
 import { Router } from "express";
-import { AiController } from "../controllers/ai.controller";
-import { protect } from "../middlewares/auth.middleware";
-import { authorize } from "../middlewares/auth.middleware";
+
+import { authentication } from "../middlewares/auth.middleware";
+import { authorization } from "../middlewares/auth.middleware";
 import { validate } from "../middlewares/validate.middleware";
 import { UserRole } from "../interfaces/user.interface";
-import { generateContentSchema,  } from "../validations/ai.validation";
+import { generateContentSchema } from "../validations/ai.validation";
+import { aiController } from "../controllers/ai.controller";
 
 const router = Router();
 
-// ============================== CHAT Assistant ==============================
-// Public — no auth required
-router.post("/chat", AiController.chatAssistant);
+// ================= CHAT (PUBLIC SSE) =================
+router.post("/chat", aiController.chatAssistant);
 
-// ============================== GENERATE Content ==============================
-router.post("/generate-content", protect, authorize(UserRole.INSTRUCTOR, UserRole.ADMIN), validate(generateContentSchema), AiController.generateContent);
+// ================= COURSE CONTENT =================
+router.post(
+  "/generate-course-content",
+  authentication,
+  authorization(UserRole.INSTRUCTOR, UserRole.ADMIN),
+  validate(generateContentSchema),
+  aiController.generateCourseContent
+);
 
+// ================= LIVE SESSION =================
+router.post(
+  "/generate-live-session",
+  authentication,
+  authorization(UserRole.INSTRUCTOR),
+  aiController.generateLiveSession
+);
 
-// ==============================
-// DYNAMIC ROUTES (with :id param) - must come last
-// ==============================
-
-// ============================== GENERATE Quiz ==============================
-router.get("/generate-quiz/:lessonId", protect, authorize(UserRole.INSTRUCTOR, UserRole.STUDENT), AiController.generateQuiz);
+// ================= MODULE QUIZ =================
+router.post(
+  "/generate-quiz/:moduleId",
+  authentication,
+  authorization(UserRole.INSTRUCTOR),
+  aiController.generateQuiz
+);
 
 export const aiRouter: Router = router;

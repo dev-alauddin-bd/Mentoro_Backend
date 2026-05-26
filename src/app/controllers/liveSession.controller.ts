@@ -2,72 +2,53 @@
 //  Live Session Controller
 // ====================
 
-import { Request, RequestHandler, Response } from "express";
+import { Request, Response } from "express";
 import { liveSessionService } from "../services/liveSession.service";
 import { catchAsyncHandler } from "../utils/catchAsyncHandler";
 import { sendResponse } from "../utils/sendResponse";
 
-// ============================== REGISTER For Session ==============================
-const registerForSession = catchAsyncHandler(async (req: Request, res: Response) => {
-  const result = await liveSessionService.registerForSession(req.body);
+export const liveSessionController = {
+  // ============================== REGISTER For Session ==============================
+  registerForSession: catchAsyncHandler(async (req: Request, res: Response) => {
+    const result = await liveSessionService.registerForSession(req.body);
+    sendResponse(res, 201, "Registration successful", result);
+  }),
 
+  // ============================== GET ALL Sessions ==============================
+  getAllSessions: catchAsyncHandler(async (req: Request, res: Response) => {
+    const result = await liveSessionService.getAllSessions(req.query);
+    sendResponse(res, 200, "Sessions fetched successfully", result);
+  }),
 
-  sendResponse(res, 201, "Registration successful", result);
-});
+  // ============================== GET Session By ID ==============================
+  getSessionById: catchAsyncHandler(async (req: Request, res: Response) => {
+    const result = await liveSessionService.getSessionById(req.params.id as string);
+    sendResponse(res, 200, "Session fetched successfully", result);
+  }),
 
-// ============================== GET ALL Sessions ==============================
-const getAllSessions = catchAsyncHandler(async (req: Request, res: Response) => {
-  const result = await liveSessionService.getAllSessions(req.query);
-  sendResponse(res, 200, "Sessions fetched successfully", result);
-});
+  // ============================== CREATE Session ==============================
+  createSession: catchAsyncHandler(async (req: Request, res: Response) => {
+    const result = await liveSessionService.createSession(req.body);
 
-// ============================== GET Session By ID ==============================
-const getSessionById = catchAsyncHandler(async (req: Request, res: Response) => {
-  const result = await liveSessionService.getSessionById(req.params.id as string);
-  sendResponse(res, 200, "Session fetched successfully", result);
-});
+    sendResponse(res, 201, "Session created successfully", result);
+  }),
 
-// ============================== CREATE Session ==============================
-const createSession = catchAsyncHandler(async (req: Request, res: Response) => {
-  const result = await liveSessionService.createSession(req.body);
+  // ============================== UPDATE Session ==============================
+  updateSession: catchAsyncHandler(async (req: Request, res: Response) => {
+    const result = await liveSessionService.updateSession(req.params.id as string, req.body);
+    sendResponse(res, 200, "Session updated successfully", result);
+  }),
 
-  sendResponse(res, 201, "Session created successfully", result);
-});
+  // ============================== DELETE Session ==============================
+  deleteSession: catchAsyncHandler(async (req: Request, res: Response) => {
+    const result = await liveSessionService.deleteSession(req.params.id as string);
+    sendResponse(res, 200, "Session deleted successfully", result);
+  }),
 
-// ============================== UPDATE Session ==============================
-const updateSession = catchAsyncHandler(async (req: Request, res: Response) => {
-  const result = await liveSessionService.updateSession(req.params.id as string, req.body);
-  sendResponse(res, 200, "Session updated successfully", result);
-});
-
-// ============================== DELETE Session ==============================
-const deleteSession = catchAsyncHandler(async (req: Request, res: Response) => {
-  const result = await liveSessionService.deleteSession(req.params.id as string);
-  sendResponse(res, 200, "Session deleted successfully", result);
-});
-
-// ============================== GET Registrants ==============================
-const getRegistrants = catchAsyncHandler(async (req: Request, res: Response) => {
-  const result = await liveSessionService.getRegistrantsBySessionId(req.params.id as string, req.query);
-  sendResponse(res, 200, "Registrants fetched successfully", result);
-});
-
-export const liveSessionController: LiveSessionController = {
-  registerForSession,
-  getAllSessions,
-  getSessionById,
-  createSession,
-  updateSession,
-  deleteSession,
-  getRegistrants
-};
-
-type LiveSessionController = {
-  registerForSession: RequestHandler;
-  getAllSessions: RequestHandler;
-  getSessionById: RequestHandler;
-  createSession: RequestHandler;
-  updateSession: RequestHandler;
-  deleteSession: RequestHandler;
-  getRegistrants: RequestHandler;
+  // ============================== GET Registrants ==============================
+  getRegistrants: catchAsyncHandler(async (req: Request, res: Response) => {
+    const result = await liveSessionService.getRegistrantsBySessionId(req.params.id as string, req.query);
+    sendResponse(res, 200, "Registrants fetched successfully", result);
+  })
 }
+

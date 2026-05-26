@@ -7,7 +7,7 @@ import { CustomAppError } from "../errors/customError";
 import { paymentService } from "./payment.service";
 
 // ============================== ENROLL In Course ==============================
-const enrollCourse = async (userId: string, courseId: string) => {
+const enrollCourse = async (studentId: string, courseId: string) => {
   const course = await prisma.course.findUnique({ where: { id: courseId } });
 
   if (!course) {
@@ -19,21 +19,22 @@ const enrollCourse = async (userId: string, courseId: string) => {
   }
 
   return await prisma.enrollment.upsert({
-    where: { userId_courseId: { userId, courseId } },
-    create: { userId, courseId },
+    where: { studentId_courseId: { studentId, courseId } },
     update: {},
+    create: { studentId, courseId },
+
   });
 };
 
 // ============================== GET My Enrollments ==============================
-const getMyEnrollments = async (userId: string, query: Record<string, unknown> = {}) => {
+const getMyEnrollments = async (studentId: string, query: Record<string, unknown> = {}) => {
   const page = Number(query.page as string) || 1;
   const limit = Number(query.limit as string) || 10;
   const skip = (page - 1) * limit;
 
   const [enrollments, total] = await Promise.all([
     prisma.enrollment.findMany({
-      where: { userId },
+      where: { studentId },
       select: {
         id: true,
         enrolledAt: true,
@@ -53,7 +54,7 @@ const getMyEnrollments = async (userId: string, query: Record<string, unknown> =
       skip,
       take: limit,
     }),
-    prisma.enrollment.count({ where: { userId } })
+    prisma.enrollment.count({ where: { studentId } })
   ]);
 
   return {
@@ -65,7 +66,7 @@ const getMyEnrollments = async (userId: string, query: Record<string, unknown> =
 };
 
 // ============================== GET Enrolled Content ==============================
-const getEnrolledCourseContent = async (userId: string, courseId: string) => {
+const getEnrolledCourseContent = async (studentId: string, courseId: string) => {
   // Check if course exists
   const course = await prisma.course.findUnique({
     where: { id: courseId },
@@ -92,8 +93,8 @@ const getEnrolledCourseContent = async (userId: string, courseId: string) => {
               videoUrl: true,
               duration: true,
               order: true,
-              completedByUsers: { 
-                where: { userId },
+              completedByUsers: {
+                where: { studentId },
                 select: { id: true }
               }
             },
@@ -111,7 +112,7 @@ const getEnrolledCourseContent = async (userId: string, courseId: string) => {
 
   // Check enrollment
   const enrollment = await prisma.enrollment.findUnique({
-    where: { userId_courseId: { userId, courseId } }
+    where: { studentId_courseId: { studentId, courseId } }
   });
 
   if (!enrollment) {
@@ -124,7 +125,7 @@ const getEnrolledCourseContent = async (userId: string, courseId: string) => {
     const processedLessons = mod.lessons.map(les => {
       const isCompleted = les.completedByUsers.length > 0;
       const isUnlocked = !isNextLessonLocked;
-      
+
       // Lock subsequent lessons if this one is not completed
       if (!isCompleted) {
         isNextLessonLocked = true;
@@ -166,9 +167,9 @@ export const enrollService = {
   enrollCourse,
   getMyEnrollments,
   getEnrolledCourseContent,
-  cancelEnrollment: async (userId: string, courseId: string) => {
+  cancelEnrollment: async (studentId: string, courseId: string) => {
     const enrollment = await prisma.enrollment.findUnique({
-      where: { userId_courseId: { userId, courseId } },
+      where: { studentId_courseId: { studentId, courseId } },
       include: { course: true }
     });
 
@@ -178,13 +179,13 @@ export const enrollService = {
 
     // If it's a paid course, we handle it through the payment service (refund)
     if (enrollment.course.price > 0) {
-    
-      return await paymentService.refundCourse(userId, courseId);
+
+      return await paymentService.refundCourse(studentId, courseId);
     }
 
     // If it's a free course, just delete the enrollment
     await prisma.enrollment.delete({
-      where: { userId_courseId: { userId, courseId } }
+      where: { studentId_courseId: { studentId, courseId } }
     });
 
     return { message: "Unenrolled from free course successfully" };

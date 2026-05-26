@@ -11,18 +11,11 @@ import { sendResponse } from "../utils/sendResponse";
 const createCheckout = catchAsyncHandler(async (req: Request, res: Response) => {
   // req.body already validated by validate(enrollValidation) middleware
   const { courseId } = req.body as { courseId: string };
-  const userId = req.user!.id;
-  const result = await paymentService.createCheckoutSession(userId, courseId);
+  const studentId = req.user!.id;
+  const result = await paymentService.createCheckoutSession(studentId, courseId);
   sendResponse(res, 201, "Checkout session created", result);
 });
 
-// ============================== CREATE Featured Checkout ==============================
-const createFeaturedCheckout = catchAsyncHandler(async (req: Request, res: Response) => {
-  const { courseId } = req.body as { courseId: string };
-  const userId = req.user!.id;
-  const result = await paymentService.createFeaturedCheckoutSession(userId, courseId);
-  sendResponse(res, 201, "Featured request checkout session created", result);
-});
 
 const paymentSuccess = async (req: Request, res: Response) => {
   const sessionId = req.query.session_id as string;
@@ -140,7 +133,7 @@ const refundCourse = catchAsyncHandler(async (req: Request, res: Response) => {
 
 export const paymentController: PaymentController = {
   createCheckout,
-  createFeaturedCheckout,
+
   paymentSuccess,
   paymentCancel,
   paymentFail,
@@ -149,7 +142,7 @@ export const paymentController: PaymentController = {
 
 type PaymentController = {
   createCheckout: RequestHandler;
-  createFeaturedCheckout: RequestHandler;
+
   paymentSuccess: RequestHandler;
   paymentCancel: RequestHandler;
   paymentFail: RequestHandler;

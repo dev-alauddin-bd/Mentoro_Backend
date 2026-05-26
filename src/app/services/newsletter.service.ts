@@ -1,7 +1,3 @@
-//  ====================
-//      Newsletter Service
-// ====================
-
 import { prisma } from "../../lib/prisma";
 import { CustomAppError } from "../errors/customError";
 

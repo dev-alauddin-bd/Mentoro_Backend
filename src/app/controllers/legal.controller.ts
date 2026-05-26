@@ -2,38 +2,30 @@
 //     Legal Controller
 // ====================
 
-import { Request, RequestHandler, Response } from "express";
+import { Request,  Response } from "express";
 import { catchAsyncHandler } from "../utils/catchAsyncHandler";
 import { sendResponse } from "../utils/sendResponse";
 import { legalService } from "../services/legal.service";
 
+export const legalController ={
+
 // ============================== CREATE OR UPDATE DOCUMENT ==============================
-const createOrUpdateLegalDocument = catchAsyncHandler(async (req: Request, res: Response) => {
+ createOrUpdateLegalDocument :catchAsyncHandler(async (req: Request, res: Response) => {
   const result = await legalService.createOrUpdateLegalDocument(req.body);
   sendResponse(res, 200, "Legal document saved successfully", result);
-});
+}),
 
 // ============================== GET DOCUMENT BY SLUG ==============================
-const getLegalDocumentBySlug = catchAsyncHandler(async (req: Request, res: Response) => {
+getLegalDocumentBySlug :catchAsyncHandler(async (req: Request, res: Response) => {
   const { slug } = req.params;
   const result = await legalService.getLegalDocumentBySlug(slug as string);
   sendResponse(res, 200, "Legal document retrieved successfully", result);
-});
+}),
 
 // ============================== GET ALL DOCUMENTS ==============================
-const getAllLegalDocuments = catchAsyncHandler(async (req: Request, res: Response) => {
+ getAllLegalDocuments:catchAsyncHandler(async (req: Request, res: Response) => {
   const result = await legalService.getAllLegalDocuments();
   sendResponse(res, 200, "Legal documents retrieved successfully", result);
-});
+})
+}
 
-export const legalController: LegalController = {
-  createOrUpdateLegalDocument,
-  getLegalDocumentBySlug,
-  getAllLegalDocuments,
-};
-
-type LegalController = {
-  createOrUpdateLegalDocument: RequestHandler;
-  getLegalDocumentBySlug: RequestHandler;
-  getAllLegalDocuments: RequestHandler;
-};

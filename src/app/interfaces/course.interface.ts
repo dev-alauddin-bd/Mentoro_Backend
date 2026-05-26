@@ -14,7 +14,6 @@ export interface ICourse {
   instructorId: string;
   instructor?: IUser;
   isPublished: boolean;
-
   categoryId: string;
 
 
@@ -34,6 +33,38 @@ export interface ICourse {
   hasCertificate?: boolean;
   isFree?: boolean;
 
+}
+
+// ============================== UPDATE COURSE DTO ==============================
+export interface IUpdateCourse {
+  // Basic Info (optional for partial update)
+  title?: string;
+  description?: string;
+
+  // Relations
+  categoryId?: string;
+  instructorId?: string;
+
+  // Media
+  thumbnail?: string;
+  previewVideo?: string;
+
+  // Pricing
+  price?: number;
+  isFree?: boolean;
+
+  // Status
+  isPublished?: boolean;
+  isDeleted?: boolean;
+
+  // Features
+  hasCertificate?: boolean;
+
+  // Content
+  learningOutcomes?: string[];
+  requirements?: string[];
+  targetAudience?: string[];
+  tags?: string[];
 }
 
 export interface IModule {

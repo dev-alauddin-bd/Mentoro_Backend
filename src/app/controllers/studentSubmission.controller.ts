@@ -3,24 +3,24 @@
 //      Controller
 // ====================
 
-import { Request, RequestHandler, Response } from "express";
+import { Request, Response } from "express";
 import { catchAsyncHandler } from "../utils/catchAsyncHandler";
 import { sendResponse } from "../utils/sendResponse";
 import { AssignmentService } from "../services/assignment.service";
 
 // ============================== SUBMIT Assignment ==============================
-const submitAssignment = catchAsyncHandler(async (req: Request, res: Response) => {
-  const userId = req.user!.id;
-  const { assignmentId, content } = req.body;
-  const submission = await AssignmentService.submitAssignment(assignmentId, userId, content);
+export const studentSubmissionController = {
+  submitAssignment: catchAsyncHandler(async (req: Request, res: Response) => {
+    const user = req.user as { id: string };
 
-  sendResponse(res, 201, "Assignment submitted successfully", submission);
-});
+    const { assignmentId, content } = req.body;
 
-export const studentSubmissionController: StudentSubmissionController = {
-  submitAssignment,
+    const submission = await AssignmentService.submitAssignment(
+      assignmentId,
+      user.id,
+      content
+    );
+
+    sendResponse(res, 201, "Assignment submitted successfully", submission);
+  }),
 };
-
-type StudentSubmissionController = {
-  submitAssignment: RequestHandler;
-}

@@ -111,9 +111,9 @@ Create a `.env` file in the root directory and configure the following variables
 DATABASE_URL=postgres://user:password@host:port/database?sslmode=verify-full
 
 # Auth Configuration
-JWT_SECRET=your_jwt_access_secret
+JWT_ACCESS_SECRET=your_jwt_access_secret
 JWT_REFRESH_SECRET=your_jwt_refresh_secret
-JWT_EXPIRES_IN=1d
+JWT_ACCESS_SECRET_EXPIRES_IN=1d
 REFRESH_TOKEN_EXPIRES_IN=7d
 
 # Server Configuration

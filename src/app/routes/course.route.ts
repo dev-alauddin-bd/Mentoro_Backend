@@ -1,48 +1,80 @@
-//  ====================
-//     Course Routes
-// ====================
-
 import { Router } from "express";
 import { courseController } from "../controllers/course.controller";
-import { authorize, protect, optionalProtect } from "../middlewares/auth.middleware";
+import { authentication, authorization, } from "../middlewares/auth.middleware";
 import { validate } from "../middlewares/validate.middleware";
-import { UserRole } from "../interfaces/user.interface";
+import { Role } from "@prisma/client";
+
 import {
   createCourseValidation,
   updateCourseValidation,
   completeLessonValidation,
 } from "../validations/course.validation";
+import { upload } from "../utils/cloudinary";
 
 const router = Router();
 
-// ============================== CREATE Course (INSTRUCTOR) ==============================
-router.post("/", protect, authorize(UserRole.INSTRUCTOR), validate(createCourseValidation), courseController.createCourse);
+// ================= CREATE COURSE =================
+router.post(
+  "/",
+  authentication,
+  authorization(Role.instructor),
+  upload.single("thumbnail"),
+  validate(createCourseValidation),
+  courseController.createCourse
+);
 
-// ============================== GET ALL Courses (PUBLIC) ==============================
-router.get("/", courseController.getAllCourses);
+// ================= MY COURSES =================
+router.get(
+  "/my-courses",
+  authentication,
+  courseController.getMyCourses
+);
 
-// ============================== GET My Enrolled Courses ==============================
-router.get("/my-courses", protect, courseController.getMyCourses);
+// ================= COMPLETE LESSON =================
+router.post(
+  "/complete-lesson",
+  authentication,
+  validate(completeLessonValidation),
+  courseController.completeLesson
+);
 
-// ============================== MARK Lesson Completed ==============================
-router.post("/complete-lesson", protect, validate(completeLessonValidation), courseController.completeLesson);
+// ================= GET ALL PUBLIC COURSES =================
+router.get("/", courseController.getAllPublicCourses);
 
+// ================= GET ALL INSTRUCTOR COURSES =================
+router.get("/instructor", authentication, authorization(Role.instructor), courseController.getInstructorCourses);
 
-// ==============================
-// DYNAMIC ROUTES (with :id param) - must come last
-// ==============================
+// ================= TOGGLE PUBLISH =================
+router.patch(
+  "/:id/toggle-publish",
+  authentication,
+  authorization(Role.instructor),
+  courseController.togglePublish
+);
 
-// ============================== GET Course By ID ==============================
-router.get("/:id", optionalProtect, courseController.getCourseById);
+// ================= UPDATE COURSE =================
+router.patch(
+  "/:id",
+  authentication,
+  authorization(Role.instructor),
+  upload.single("thumbnail"),
+  validate(updateCourseValidation),
+  courseController.updateCourse
+);
 
-// ============================== UPDATE Course ==============================
-router.put("/:id", protect, authorize(UserRole.ADMIN, UserRole.INSTRUCTOR), validate(updateCourseValidation), courseController.updateCourse);
+// ================= DELETE COURSE =================
+router.delete(
+  "/:id",
+  authentication,
+  authorization(Role.admin, Role.instructor),
+  courseController.deleteCourse
+);
 
-// ============================== TOGGLE Publish Status ==============================
-router.patch("/:id/toggle-publish", protect, authorize(UserRole.ADMIN, UserRole.INSTRUCTOR), courseController.togglePublish);
+// ================= GET COURSE BY ID =================
+router.get(
+  "/:id",
 
-// ============================== DELETE Course (ADMIN) ==============================
-router.delete("/:id", protect, authorize(UserRole.ADMIN, UserRole.INSTRUCTOR), courseController.deleteCourse);
-
+  courseController.getCourseById
+);
 
 export const courseRouter: Router = router;

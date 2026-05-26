@@ -1,163 +1,182 @@
-//  ====================
-//    Dashboard Service
-// ====================
-
 import { prisma } from "../../lib/prisma";
-import {  UserRole } from "../interfaces/user.interface";
+import { Role } from "@prisma/client";
 
+// ============================== DASHBOARD SERVICE ==============================
 export const dashboardService = {
-  // ============================== GET Admin Analytics ==============================
+  // ============================== ADMIN ANALYTICS ==============================
   async getAdminAnalytics() {
-    const [totalStudents, totalInstructors, totalCourses, totalEnrollments, revenueData] = await Promise.all([
-      prisma.user.count({ where: { role: UserRole.STUDENT } }),
-      prisma.user.count({ where: { role: UserRole.INSTRUCTOR } }),
-      prisma.course.count(),
-      prisma.enrollment.count(),
-      prisma.payment.aggregate({
-        where: { status: 'COMPLETED' },
-        _sum: { amount: true }
-      })
-    ]);
+    const [totalStudents, totalInstructors, totalCourses, totalEnrollments, revenueData] =
+      await Promise.all([
+        prisma.user.count({ where: { role: Role.student } }),
+        prisma.user.count({ where: { role: Role.instructor } }),
+        prisma.course.count(),
+        prisma.enrollment.count(),
+        prisma.payment.aggregate({
+          where: { status: "COMPLETED" },
+          _sum: { amount: true },
+        }),
+      ]);
 
-    const totalRevenue = revenueData._sum.amount || 0;
-    const engagementRate = totalStudents > 0 
-      ? Math.min(Math.round((totalEnrollments / totalStudents) * 100), 100)
-      : 0;
+    const totalRevenue = revenueData._sum.amount ?? 0;
+
+    const engagementRate =
+      totalStudents > 0
+        ? Math.min(Math.round((totalEnrollments / totalStudents) * 100), 100)
+        : 0;
 
     return {
-      role: UserRole.ADMIN,
+      role: Role.admin,
       statistics: {
         totalStudents,
         totalInstructors,
         totalCourses,
-        totalRevenue,
         totalEnrollments,
-        engagementRate
+        totalRevenue,
+        engagementRate,
       },
-      message: "Full administrative overview generated"
+      message: "Admin dashboard data generated",
     };
   },
 
-  // ============================== GET Instructor Analytics ==============================
+  // ============================== INSTRUCTOR ANALYTICS ==============================
   async getInstructorAnalytics(userId: string) {
-    const [myCoursesCount, totalLessons, totalEnrolledData, uniqueStudents, instructorRevenueData] = await Promise.all([
-      prisma.course.count({ where: { instructorId: userId } }),
-      prisma.lesson.count({ where: { module: { course: { instructorId: userId } } } }),
-      prisma.enrollment.count({ where: { course: { instructorId: userId } } }),
-      prisma.user.count({
-        where: { enrolledCourses: { some: { course: { instructorId: userId } } } }
-      }),
-      prisma.payment.aggregate({
-        where: { 
-          status: 'COMPLETED',
-          course: { instructorId: userId }
-        },
-        _sum: { amount: true }
-      })
-    ]);
+    const [totalCourses, totalLessons, totalEnrollments, studentGroups, revenueData] =
+      await Promise.all([
+        prisma.course.count({
+          where: { instructorId: userId },
+        }),
 
-    const myRevenue = instructorRevenueData._sum.amount || 0;
-    const engagementRate = uniqueStudents > 0 
-      ? Math.min(Math.round((totalEnrolledData / uniqueStudents) * 100), 100)
-      : 0;
+        prisma.lesson.count({
+          where: { module: { course: { instructorId: userId } } },
+        }),
+
+        prisma.enrollment.count({
+          where: { course: { instructorId: userId } },
+        }),
+
+        prisma.enrollment.groupBy({
+          by: ["studentId"],
+          where: { course: { instructorId: userId } },
+        }),
+
+        prisma.payment.aggregate({
+          where: {
+            status: "COMPLETED",
+            course: { instructorId: userId },
+          },
+          _sum: { amount: true },
+        }),
+      ]);
+
+    const totalStudents = studentGroups.length;
+    const totalRevenue = revenueData._sum.amount ?? 0;
+
+    const engagementRate =
+      totalStudents > 0
+        ? Math.min(Math.round((totalEnrollments / totalStudents) * 100), 100)
+        : 0;
 
     return {
-      role: UserRole.INSTRUCTOR,
+      role: Role.instructor,
       statistics: {
-        totalCourses: myCoursesCount,
-        totalStudents: uniqueStudents,
-        totalEnrollments: totalEnrolledData,
-        totalRevenue: myRevenue,
-        totalLessons: totalLessons,
-        engagementRate
+        totalCourses,
+        totalStudents,
+        totalEnrollments,
+        totalLessons,
+        totalRevenue,
+        engagementRate,
       },
-      message: "Instructor performance overview ready"
+      message: "Instructor dashboard data generated",
     };
   },
 
-  // ============================== GET Student Analytics ==============================
+  // ============================== STUDENT ANALYTICS ==============================
   async getStudentAnalytics(userId: string) {
-    const [myEnrolledCount, totalCompletedLessons, pendingAssignments, myEnrollmentsData] = await Promise.all([
-
-      prisma.enrollment.count({ where: { userId } }),
-      prisma.completedLesson.count({ where: { userId } }),
-      prisma.assignment.count({
-        where: { module: { course: { enrolledUsers: { some: { userId } } } } }
+    const [enrolledCount, completedLessonsCount, enrollments] = await Promise.all([
+      prisma.enrollment.count({
+        where: { studentId: userId },
       }),
+
+      prisma.completedLesson.count({
+        where: { studentId: userId },
+      }),
+
       prisma.enrollment.findMany({
-        where: { userId },
-        select: { 
+        where: { studentId: userId },
+        select: {
           lastActivity: true,
-          course: { 
-            select: { 
+          course: {
+            select: {
               id: true,
               title: true,
               thumbnail: true,
-              modules: { 
-                select: { 
-                  lessons: { select: { id: true } } 
-                } 
-              } 
-            } 
-          } 
+              modules: {
+                select: {
+                  lessons: {
+                    select: { id: true },
+                  },
+                },
+              },
+            },
+          },
         },
-        orderBy: { lastActivity: 'desc' }
-      })
-
+        orderBy: { lastActivity: "desc" },
+      }),
     ]);
 
-    const completedLessonRecords = await prisma.completedLesson.findMany({
-      where: { userId },
-      select: { lessonId: true }
+    const completedLessons = await prisma.completedLesson.findMany({
+      where: { studentId: userId },
+      select: { lessonId: true },
     });
-    const completedLessonIds = new Set(completedLessonRecords.map(r => r.lessonId));
 
-    let completedCount = 0;
-    let totalProgressSum = 0;
-    
-    const enrichedEnrollments = myEnrollmentsData.map(enrollment => {
-      const lessons = enrollment.course.modules.flatMap(m => m.lessons);
-      const totalLessonsInCourse = lessons.length;
-      let progressPercentage = 0;
-      
-      if (totalLessonsInCourse > 0) {
-        const completedInThisCourse = lessons.filter(l => completedLessonIds.has(l.id)).length;
-        progressPercentage = Math.round((completedInThisCourse / totalLessonsInCourse) * 100);
-        if (completedInThisCourse === totalLessonsInCourse) {
-          completedCount++;
+    const completedSet = new Set(completedLessons.map((l) => l.lessonId));
+
+    let completedCourses = 0;
+    let progressSum = 0;
+
+    const enrichedCourses = enrollments.map((enrollment) => {
+      const lessons = enrollment.course.modules.flatMap((m) => m.lessons);
+      const totalLessons = lessons.length;
+
+      let progress = 0;
+
+      if (totalLessons > 0) {
+        const completed = lessons.filter((l) =>
+          completedSet.has(l.id)
+        ).length;
+
+        progress = Math.round((completed / totalLessons) * 100);
+
+        if (progress === 100) {
+          completedCourses++;
         }
-      } else {
-        // If course has no lessons, consider it 100%? Or 0? Let's say 0 for safety or check if it's meant to be completed.
-        // Usually, courses have lessons.
       }
-      
-      totalProgressSum += progressPercentage;
-      
+
+      progressSum += progress;
+
       return {
         ...enrollment.course,
-        progressPercentage,
-        lastActivity: enrollment.lastActivity
+        progress,
+        lastActivity: enrollment.lastActivity,
       };
     });
 
-    const inProgressCount = myEnrolledCount - completedCount;
-    const overallProgressVal = myEnrolledCount > 0 ? Math.round(totalProgressSum / myEnrolledCount) : 0;
-    const continueCourses = enrichedEnrollments.slice(0, 4);
+    const inProgress = enrolledCount - completedCourses;
+
+    const overallProgress =
+      enrolledCount > 0 ? Math.round(progressSum / enrolledCount) : 0;
 
     return {
-      role: UserRole.STUDENT,
+      role: Role.student,
       statistics: {
-        totalEnrolled: myEnrolledCount,
-        completedCount: completedCount,
-        inProgressCount: inProgressCount,
-        overallProgressVal: overallProgressVal,
-        lessonsCompleted: totalCompletedLessons,
-        pendingTasks: pendingAssignments,
-        continueCourses: continueCourses
+        totalEnrolled: enrolledCount,
+        completedCourses,
+        inProgress,
+        overallProgress,
+        lessonsCompleted: completedLessonsCount,
+        continueCourses: enrichedCourses.slice(0, 4),
       },
-      message: "Student activity dashboard snapshot ready"
+      message: "Student dashboard data generated",
     };
-
-  }
-
+  },
 };

@@ -11,7 +11,7 @@ cloudinary.config({
 const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: {
-    folder: "course_master_avatars",
+    folder: "mentoro_courses",
     allowed_formats: ["jpg", "png", "jpeg", "webp"]
   } as unknown as Record<string, unknown>
 });

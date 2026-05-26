@@ -25,7 +25,6 @@ const globalErrorHandler = (
         : "Internal Server Error",
     },
   ];
-
   // Log every error internally (never exposed to client)
   logger.error({
     msg: "Global error handler caught an error",

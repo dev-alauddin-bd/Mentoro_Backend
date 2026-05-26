@@ -4,17 +4,16 @@
 
 import { Router } from "express";
 import { paymentController } from "../controllers/payment.controller";
-import { protect, authorize } from "../middlewares/auth.middleware";
+import { authentication, authorization } from "../middlewares/auth.middleware";
 import { UserRole } from "../interfaces/user.interface";
 
 const router = Router();
 
 // ============================== CREATE Checkout ==============================
-router.post("/checkout", protect, authorize(UserRole.STUDENT), paymentController.createCheckout);
-router.post("/checkout-featured", protect, authorize(UserRole.INSTRUCTOR), paymentController.createFeaturedCheckout);
+router.post("/checkout", authentication, authorization(UserRole.STUDENT), paymentController.createCheckout);
 
 // ============================== REFUND Course ==============================
-router.post("/refund", protect, authorize(UserRole.STUDENT), paymentController.refundCourse);
+router.post("/refund", authentication, authorization(UserRole.STUDENT), paymentController.refundCourse);
 
 // ============================== PAYMENT Callbacks ==============================
 router.get("/success", paymentController.paymentSuccess);

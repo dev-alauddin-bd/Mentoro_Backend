@@ -1,5 +1,5 @@
 //  ====================
-//     User Controller
+//     User Controller (FIXED)
 // ====================
 
 import { Request, RequestHandler, Response } from "express";
@@ -7,66 +7,43 @@ import { catchAsyncHandler } from "../utils/catchAsyncHandler";
 import { sendResponse } from "../utils/sendResponse";
 import { userService } from "../services/user.service";
 import { IUser } from "../interfaces/user.interface";
+export const userController = {
+  getAllUsers: catchAsyncHandler(async (req: Request, res: Response) => {
+    const users = await userService.getAllUsers(req.user as IUser, req.query);
+    sendResponse(res, 200, "Users retrieved successfully", users);
+  }),
 
-// ============================== GET ALL Users ==============================
-const getAllUsers = catchAsyncHandler(async (req: Request, res: Response) => {
-  const users = await userService.getAllUsers(req.user as IUser, req.query);
-  sendResponse(res, 200, "Users retrieved successfully", users);
-});
+  updateUserRole: catchAsyncHandler(async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const { role } = req.body;
 
-// ============================== UPDATE User Role ==============================
-const updateUserRole = catchAsyncHandler(async (req: Request, res: Response) => {
-  const { id } = req.params;
-  const { role } = req.body;
-  const user = await userService.updateUserRole(id as string, role);
-  sendResponse(res, 200, "User role updated successfully", user);
-});
+    const user = await userService.updateUserRole(id as string, role);
+    sendResponse(res, 200, "User role updated successfully", user);
+  }),
 
-// ============================== UPDATE User Status ==============================
-const updateUserStatus = catchAsyncHandler(async (req: Request, res: Response) => {
-  const { id } = req.params;
-  const { status } = req.body;
-  const user = await userService.updateUserStatus(id as string, status);
-  sendResponse(res, 200, "User status updated successfully", user);
-});
+  updateUserStatus: catchAsyncHandler(async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const { status } = req.body;
 
-// ============================== BECOME Instructor ==============================
-const becomeInstructor = catchAsyncHandler(async (req: Request, res: Response) => {
-  const userId = req.user!.id;
-  await userService.becomeInstructor(userId);
-  sendResponse(res, 200, "Success: You are now an instructor!");
-});
+    const user = await userService.updateUserStatus(id as string, status);
+    sendResponse(res, 200, "User status updated successfully", user);
+  }),
 
-// ============================== UPDATE Profile ==============================
-const updateProfile = catchAsyncHandler(async (req: Request, res: Response) => {
-  const userId = req.user!.id;
-  const { name } = req.body;
-  let avatarUrl;
+  becomeInstructor: catchAsyncHandler(async (req: Request, res: Response) => {
+    const user = req.user as IUser;
 
-  if (req.file) {
-    avatarUrl = req.file.path; 
-  }
+    await userService.becomeInstructor(user.id);
+    sendResponse(res, 200, "Success: You are now an instructor!");
+  }),
 
-  const updatedUser = await userService.updateProfile(userId, {
-    name,
-    ...(avatarUrl && { avatar: avatarUrl }),
-  });
+  updateProfile: catchAsyncHandler(async (req: Request, res: Response) => {
+    const user = req.user as IUser;
 
-  sendResponse(res, 200, "Profile updated successfully", updatedUser);
-});
+    const updatedUser = await userService.updateProfile(user.id, {
+      name: req.body?.name,
+      avatar: req.file?.path || undefined,
+    });
 
-export const userController: UserController = {
-  getAllUsers,
-  updateUserRole,
-  updateUserStatus,
-  becomeInstructor,
-  updateProfile,
+    sendResponse(res, 200, "Profile updated successfully", updatedUser);
+  }),
 };
-
-type UserController = {
-  getAllUsers: RequestHandler;
-  updateUserRole: RequestHandler;
-  updateUserStatus: RequestHandler;
-  becomeInstructor: RequestHandler;
-  updateProfile: RequestHandler;
-}

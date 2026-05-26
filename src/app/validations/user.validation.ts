@@ -18,7 +18,7 @@ export const updateUserRoleValidation = z.object({
 });
 
 export const updateUserStatusValidation = z.object({
-  status: z.enum(["active", "suspended", "banned"], {
-    message: "Status must be one of: active, suspended, banned",
+  status: z.enum(["active", "blocked"], {
+    message: "Status must be one of: active, blocked",
   }),
 });

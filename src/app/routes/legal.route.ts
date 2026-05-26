@@ -3,7 +3,7 @@
 // ====================
 
 import { Router } from "express";
-import { authorize, protect } from "../middlewares/auth.middleware";
+import { authorization, authentication } from "../middlewares/auth.middleware";
 import { UserRole } from "../interfaces/user.interface";
 import { legalController } from "../controllers/legal.controller";
 
@@ -16,8 +16,8 @@ router.get("/", legalController.getAllLegalDocuments);
 // ============================== ADMIN ROUTES ==============================
 router.post(
   "/",
-  protect,
-  authorize(UserRole.ADMIN),
+  authentication,
+  authorization(UserRole.ADMIN),
   legalController.createOrUpdateLegalDocument
 );
 

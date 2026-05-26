@@ -7,22 +7,24 @@ datasource db {
 }
 
 model User {
-  id                    String                 @id @default(uuid())
-  name                  String
-  email                 String                 @unique
-  password              String
-  role                  Role                   @default(student)
-  avatar                String?
+  id       String     @id @default(uuid())
+  name     String
+  email    String     @unique
+  password String
+  role     Role       @default(student)
+  avatar   String?
+  status   UserStatus @default(active)
+
   createdAt             DateTime               @default(now())
   updatedAt             DateTime               @updatedAt
-  status                UserStatus             @default(active)
-  assignmentSubmissions AssignmentSubmission[]
+  courses               Course[]
   completedLessons      CompletedLesson[]
-  createdCourses        Course[]               @relation("InstructorCourses")
-  enrolledCourses       Enrollment[]
-  payments              Payment[]
   reviews               Review[]
+  payments              Payment[]
+  assignmentSubmissions AssignmentSubmission[]
   quizSubmissions       QuizSubmission[]
+  liveSessions          LiveSession[]
+  enrollments           Enrollment[]
 
   @@index([role])
   @@index([status])
@@ -35,38 +37,41 @@ model Category {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   courses   Course[]
+  isActive  Boolean  @default(true)
 
   @@map("categories")
 }
 
 model Course {
-  id               String       @id @default(uuid())
-  title            String
-  description      String?
-  thumbnail        String
-  previewVideo     String
-  price            Float        @default(0)
-  instructorId     String
-  isPublished      Boolean      @default(false)
+  id           String  @id @default(uuid())
+  title        String
+  description  String?
+  thumbnail    String
+  previewVideo String
+  price        Float   @default(0)
+
+  isPublished    Boolean @default(false)
+  isDeleted      Boolean @default(false)
+  hasCertificate Boolean @default(false)
+
+  learningOutcomes String[] @default([])
+  requirements     String[] @default([])
+  targetAudience   String[] @default([])
+  tags             String[] @default([])
   categoryId       String
-  createdAt        DateTime     @default(now())
-  updatedAt        DateTime     @updatedAt
-  isDeleted        Boolean      @default(false)
-  learningOutcomes String[]
-  requirements    String[]
-  targetAudience  String[]
-  tags            String[]
-  hasCertificate  Boolean @default(false)
-  isFree          Boolean @default(false)
-  category         Category     @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  instructor       User         @relation("InstructorCourses", fields: [instructorId], references: [id])
-  enrolledUsers    Enrollment[]
-  modules          Module[]
-  payments         Payment[]
-  reviews          Review[]
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  category     Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  instructorId String
+  instructor   User     @relation(fields: [instructorId], references: [id], onDelete: Cascade)
+
+  modules     Module[]
+  enrollments Enrollment[]
+  payments    Payment[]
+  reviews     Review[]
 
   @@index([categoryId])
-  @@index([instructorId])
   @@index([isPublished])
   @@index([isDeleted])
   @@map("courses")
@@ -78,31 +83,14 @@ model Module {
   courseId    String
   order       Int          @default(0)
   isDeleted   Boolean      @default(false)
-  assignments Assignment[]
-  lessons     Lesson[]
-  quiz        Quiz?
   course      Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lessons     Lesson[]
+  assignments Assignment[]
+  quiz        Quiz?
 
   @@index([courseId])
   @@index([isDeleted])
   @@map("modules")
-}
-
-model Review {
-  id        String   @id @default(uuid())
-  content   String
-  rating    Int      @default(5)
-  userId    String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  courseId  String
-  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([rating])
-  @@index([courseId])
-  @@index([userId])
-  @@map("reviews")
 }
 
 model Lesson {
@@ -110,12 +98,12 @@ model Lesson {
   title            String
   videoUrl         String
   duration         Float             @default(0)
+  content          String?
   moduleId         String
   order            Int               @default(0)
   isDeleted        Boolean           @default(false)
-  content          String?
-  completedByUsers CompletedLesson[]
   module           Module            @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  completedByUsers CompletedLesson[]
 
   @@index([moduleId])
   @@index([isDeleted])
@@ -126,12 +114,12 @@ model Assignment {
   id          String                 @id @default(uuid())
   description String
   moduleId    String
-  createdAt   DateTime               @default(now())
   deadline    DateTime?
   isDeleted   Boolean                @default(false)
+  createdAt   DateTime               @default(now())
   updatedAt   DateTime               @updatedAt
-  submissions AssignmentSubmission[]
   module      Module                 @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  submissions AssignmentSubmission[]
 
   @@index([moduleId])
   @@map("assignments")
@@ -139,78 +127,106 @@ model Assignment {
 
 model Enrollment {
   id           String   @id @default(uuid())
-  userId       String
+  studentId    String
   courseId     String
   enrolledAt   DateTime @default(now())
   lastActivity DateTime @updatedAt
+  student      User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
   course       Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, courseId])
-  @@index([userId])
+  @@unique([studentId, courseId])
   @@index([courseId])
+  @@index([studentId])
   @@map("enrollments")
 }
 
 model CompletedLesson {
   id          String   @id @default(uuid())
-  userId      String
+  studentId   String
   lessonId    String
   completedAt DateTime @default(now())
+  user        User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
   lesson      Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, lessonId])
-  @@index([userId])
+  @@unique([studentId, lessonId])
   @@index([lessonId])
+  @@index([studentId])
   @@map("completed_lessons")
 }
 
+model Review {
+  id        String   @id @default(uuid())
+  content   String
+  rating    Int      @default(5)
+  studentId String
+  courseId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  students  User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@index([rating])
+  @@index([courseId])
+  @@index([studentId])
+  @@map("reviews")
+}
+
 model Payment {
-  id              String        @id @default(uuid())
-  amount          Float
-  currency        String        @default("usd")
-  status          PaymentStatus @default(PENDING)
-  stripeSessionId String?       @unique
-  stripePaymentId String?       @unique
-  userId          String
-  courseId        String
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-  type            PaymentType   @default(COURSE_PURCHASE)
-  course          Course        @relation(fields: [courseId], references: [id])
-  user            User          @relation(fields: [userId], references: [id])
+  id       String @id @default(uuid())
+  amount   Float
+  currency String @default("usd")
+
+  status PaymentStatus @default(PENDING)
+  type   PaymentType   @default(COURSE_PURCHASE)
+
+  stripeSessionId String? @unique
+  stripePaymentId String? @unique
+
+  studentId String
+  courseId  String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  student User @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
 
   @@index([status])
-  @@index([userId])
+  @@index([studentId])
   @@index([courseId])
   @@map("payments")
 }
 
 model AssignmentSubmission {
-  id           String     @id @default(uuid())
-  content      String
-  status       String     @default("submitted")
-  score        Float?
-  assignmentId String
-  userId       String
-  submittedAt  DateTime   @default(now())
-  assignment   Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
-  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id      String @id @default(uuid())
+  content String
+  status  String @default("submitted")
+  score   Float?
 
-  @@unique([userId, assignmentId])
-  @@index([userId])
+  assignmentId String
+  studentId    String
+
+  submittedAt DateTime @default(now())
+
+  assignment Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  student    User       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, assignmentId])
   @@index([assignmentId])
+  @@index([studentId])
   @@map("assignment_submissions")
 }
 
-// ── Quiz (Instructor-created, stored in DB) ───────────────────────────────────
 model Quiz {
-  id          String         @id @default(uuid())
-  moduleId    String         @unique
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
-  module      Module         @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  id       String @id @default(uuid())
+  moduleId String @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  module Module @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
   questions   QuizQuestion[]
   submissions QuizSubmission[]
 
@@ -224,7 +240,8 @@ model QuizQuestion {
   options       String[]
   correctAnswer String
   order         Int      @default(0)
-  quiz          Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+
+  quiz Quiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
 
   @@index([quizId])
   @@map("quiz_questions")
@@ -233,33 +250,42 @@ model QuizQuestion {
 model QuizSubmission {
   id          String   @id @default(uuid())
   quizId      String
-  userId      String
   score       Int
   total       Int
   percentage  Float
+  studentId   String
   submittedAt DateTime @default(now())
   quiz        Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, quizId])
+  @@unique([studentId, quizId])
   @@index([quizId])
-  @@index([userId])
+  @@index([studentId])
   @@map("quiz_submissions")
 }
 
 model LiveSession {
-  id                   String             @id @default(uuid())
-  title                String
-  description          String?
-  thumbnail            String?
+  id          String  @id @default(uuid())
+  title       String
+  description String?
+  thumbnail   String?
+
   sessionDate          DateTime
   registrationDeadline DateTime
-  maxCapacity          Int?
-  meetingLink          String?
-  isPublished          Boolean            @default(false)
-  createdAt            DateTime           @default(now())
-  updatedAt            DateTime           @updatedAt
-  registrations        LiveRegistration[]
+
+  learningOutcomes String[] @default([])
+  whoShouldAttend  String[] @default([])
+  keyTopics        String[] @default([])
+
+  level         String?            @default("BEGINNER")
+  maxCapacity   Int?
+  meetingLink   String?
+  isPublished   Boolean            @default(false)
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  userId        String
+  user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  registrations LiveRegistration[]
 
   @@map("live_sessions")
 }
@@ -278,17 +304,20 @@ model LiveRegistration {
 }
 
 model Job {
-  id           String           @id @default(uuid())
-  title        String
-  category     String
-  location     String
-  type         String
-  salary       String
-  description  String
-  deadline     DateTime?
-  isPublished  Boolean          @default(true)
-  createdAt    DateTime         @default(now())
-  updatedAt    DateTime         @updatedAt
+  id          String @id @default(uuid())
+  title       String
+  category    String
+  location    String
+  type        String
+  salary      String
+  description String
+
+  deadline    DateTime?
+  isPublished Boolean   @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   applications JobApplication[]
 
   @@index([category])
@@ -298,15 +327,19 @@ model Job {
 }
 
 model JobApplication {
-  id          String   @id @default(uuid())
+  id          String  @id @default(uuid())
   fullName    String
   email       String
   resumeLink  String
   coverLetter String?
-  status      String   @default("pending")
-  jobId       String
-  appliedAt   DateTime @default(now())
-  job         Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  status String @default("pending")
+
+  jobId String
+
+  appliedAt DateTime @default(now())
+
+  job Job @relation(fields: [jobId], references: [id], onDelete: Cascade)
 
   @@index([jobId])
   @@index([status])
@@ -314,18 +347,20 @@ model JobApplication {
 }
 
 model NewsletterSubscriber {
-  id        String   @id @default(uuid())
-  email     String   @unique
+  id    String @id @default(uuid())
+  email String @unique
+
   createdAt DateTime @default(now())
 
   @@map("newsletter_subscribers")
 }
 
 model LegalDocument {
-  id        String   @id @default(uuid())
-  slug      String   @unique
-  title     String
-  content   String
+  id      String @id @default(uuid())
+  slug    String @unique
+  title   String
+  content String
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

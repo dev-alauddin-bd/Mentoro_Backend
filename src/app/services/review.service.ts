@@ -1,83 +1,133 @@
-//  ====================
-//     Review Service
-// ====================
-
 import { prisma } from "../../lib/prisma";
 import { CustomAppError } from "../errors/customError";
 
-// ============================== CREATE Review ==============================
-const createReview = async (payload: { content: string; rating: number; userId: string; courseId: string }) => {
-  const { userId, courseId } = payload;
+export const reviewService = {
+  // ================= CREATE REVIEW =================
+  async createReview(payload: {
+    content: string;
+    rating: number;
+    studentId: string;
+    courseId: string;
+  }) {
+    const { studentId, courseId } = payload;
 
-  const enrollment = await prisma.enrollment.findUnique({
-    where: { userId_courseId: { userId, courseId } }
-  });
+    // check enrollment (must be enrolled)
+    const enrollment = await prisma.enrollment.findFirst({
+      where: {
+        studentId,
+        courseId,
+      },
+    });
 
-  if (!enrollment) {
-    throw new CustomAppError(403, "You must be enrolled in this course to leave a review.");
-  }
-
-  const existingReview = await prisma.review.findFirst({
-    where: { userId, courseId }
-  });
-
-  if (existingReview) {
-    throw new CustomAppError(400, "You have already reviewed this course.");
-  }
-
-  return await prisma.review.create({
-    data: payload,
-    select: {
-      id: true,
-      content: true,
-      rating: true,
-      createdAt: true,
-      user: { select: { name: true, avatar: true, role: true } }
+    if (!enrollment) {
+      throw new CustomAppError(
+        403,
+        "You must be enrolled in this course to leave a review."
+      );
     }
-  });
-};
 
-// ============================== GET ALL Reviews ==============================
-const getAllReviews = async (query: Record<string, unknown> = {}) => {
-  const page = Number(query.page as string) || 1;
-  const limit = Number(query.limit as string) || 10;
-  const skip = (page - 1) * limit;
+    // duplicate review check
+    const existingReview = await prisma.review.findFirst({
+      where: {
+        studentId,
+        courseId,
+      },
+    });
 
-  const [reviews, total] = await Promise.all([
-    prisma.review.findMany({
+    if (existingReview) {
+      throw new CustomAppError(
+        400,
+        "You have already reviewed this course."
+      );
+    }
+
+    return await prisma.review.create({
+      data: {
+        content: payload.content,
+        rating: payload.rating,
+        studentId,
+        courseId,
+      },
       select: {
         id: true,
         content: true,
         rating: true,
         createdAt: true,
-        user: { select: { name: true, avatar: true, role: true } }
+        students: {
+
+          select: {
+            name: true,
+            avatar: true,
+            role: true,
+          },
+
+
+        },
       },
-      orderBy: { createdAt: "desc" },
-      skip,
-      take: limit,
-    }),
-    prisma.review.count()
-  ]);
+    });
+  },
 
-  return {
-    reviews,
-    total,
-    page,
-    totalPages: Math.ceil(total / limit)
-  };
-};
+  // ================= GET ALL REVIEWS =================
+  async getAllReviews(query: Record<string, unknown> = {}) {
+    const page = Number(query.page) || 1;
+    const limit = Number(query.limit) || 10;
+    const skip = (page - 1) * limit;
 
-// ============================== DELETE Review ==============================
-const deleteReview = async (id: string, userId: string) => {
-  const review = await prisma.review.findUnique({ where: { id } });
-  if (!review) throw new CustomAppError(404, "Review not found");
-  if (review.userId !== userId) throw new CustomAppError(403, "Unauthorized");
+    const [reviews, total] = await Promise.all([
+      prisma.review.findMany({
+        skip,
+        take: limit,
+        orderBy: { createdAt: "desc" },
+        select: {
+          id: true,
+          content: true,
+          rating: true,
+          createdAt: true,
+          students: {
+            select: {
 
-  return await prisma.review.delete({ where: { id } });
-};
+              name: true,
+              avatar: true,
+              role: true,
+            },
 
-export const reviewService = {
-  createReview,
-  getAllReviews,
-  deleteReview
+          },
+          course: {
+            select: {
+              id: true,
+              title: true,
+              thumbnail: true,
+            },
+          },
+        },
+      }),
+      prisma.review.count(),
+    ]);
+
+    return {
+      reviews,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit),
+    };
+  },
+
+  // ================= DELETE REVIEW =================
+  async deleteReview(id: string, studentId: string) {
+    const review = await prisma.review.findUnique({
+      where: { id },
+    });
+
+    if (!review) {
+      throw new CustomAppError(404, "Review not found");
+    }
+
+    if (review.studentId !== studentId) {
+      throw new CustomAppError(403, "Unauthorizationd");
+    }
+
+    return await prisma.review.delete({
+      where: { id },
+    });
+  },
 };
