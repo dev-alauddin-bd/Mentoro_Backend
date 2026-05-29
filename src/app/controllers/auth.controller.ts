@@ -28,8 +28,10 @@ export const authControllers = {
   // ============================== REFRESH Token ==============================
   refreshToken: catchAsyncHandler(async (req: Request, res: Response) => {
     const token = req.cookies.refreshToken;
-    const { accessToken } = await authServices.refreshToken(token);
-    sendResponse(res, 200, "Access token refreshed", { accessToken });
+    const { accessToken, refreshToken: newRefreshToken, user } = await authServices.refreshToken(token);
+    setRefreshTokenCookie(res, newRefreshToken);
+    console.log('Access token refreshed:', accessToken);
+    sendResponse(res, 200, "Access token refreshed", { accessToken, user });
   }),
 
   // ============================== LOGOUT ==============================

@@ -118,7 +118,9 @@ const refreshToken = async (token: string) => {
     };
     const { accessToken, refreshToken } = generateTokens(tokenPayload);
 
-    return { accessToken, refreshToken };
+    const { password, ...safeUser } = user;
+
+    return { accessToken, refreshToken, user: safeUser };
   } catch {
     throw new CustomAppError(401, "Invalid or expired token");
   }
