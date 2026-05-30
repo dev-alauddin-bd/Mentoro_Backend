@@ -46,6 +46,7 @@ model Course {
   id           String  @id @default(uuid())
   title        String
   description  String?
+  slug    String  @unique
   thumbnail    String
   previewVideo String
   price        Float   @default(0)

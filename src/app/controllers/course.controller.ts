@@ -31,9 +31,9 @@ export const courseController = {
   }),
 
   // ================= GET COURSE BY ID =================
-  getCourseById: catchAsyncHandler(async (req: Request, res: Response) => {
-    const result = await courseService.getCourseById(
-      req.params.id as string
+  getCourseBySlug: catchAsyncHandler(async (req: Request, res: Response) => {
+    const result = await courseService.getCourseBySlug(
+      req.params.slug as string
     );
     sendResponse(res, 200, "Course fetched successfully", result);
   }),
@@ -62,30 +62,29 @@ export const courseController = {
 
   // ================= UPDATE COURSE =================
   updateCourse: catchAsyncHandler(async (req: Request, res: Response) => {
-    const thumbnail = req.file?.path;
-    const body = {
-      ...req.body,
-      thumbnail
+    let payload = req.body;
+    
+    if (req.body.data) {
+      payload = JSON.parse(req.body.data);
     }
-    const result = await courseService.updateCourse(
-      req.params.id as string,
-      body
-    );
+
+    if (req.file) {
+      payload.thumbnail = req.file.path;
+    }
+
+    const result = await courseService.updateCourse(req.params.slug as string, payload);
     sendResponse(res, 200, "Course updated successfully", result);
   }),
 
   // ================= DELETE COURSE =================
   deleteCourse: catchAsyncHandler(async (req: Request, res: Response) => {
-    const result = await courseService.deleteCourse(
-      req.params.id as string,
-      req.user
-    );
-    sendResponse(res, 200, result.message);
+    const result = await courseService.deleteCourse(req.params.slug as string, req.user);
+    sendResponse(res, 200, "Course deleted successfully", result);
   }),
 
   // ================= TOGGLE PUBLISH =================
   togglePublish: catchAsyncHandler(async (req: Request, res: Response) => {
-    const result = await courseService.togglePublish(req.params.id as string);
-    sendResponse(res, 200, "Course publish status updated", result);
+    const result = await courseService.togglePublish(req.params.slug as string);
+    sendResponse(res, 200, "Course status updated", result);
   }),
 };

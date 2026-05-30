@@ -4,7 +4,7 @@ import { prisma } from "../../lib/prisma";
 import redis from "../../lib/redis";
 import logger from "../../lib/logger";
 import { Prisma } from "@prisma/client";
-import { tr } from "zod/v4/locales";
+import { createSlug } from "../utils/generateSlug";
 
 // ================= CACHE CLEAR =================
 const clearCourseCache = async () => {
@@ -24,12 +24,13 @@ const clearCourseCache = async () => {
 export const courseService = {
   // ================= CREATE COURSE =================
   async createCourse(payload: ICourse) {
-
+    const slug = createSlug(payload.title);
     const course = await prisma.course.create({
       data: {
         title: payload.title,
         description: payload.description,
         categoryId: payload.categoryId,
+        slug,
         instructorId: payload.instructorId,
         previewVideo: payload.previewVideo,
         thumbnail: payload.thumbnail,
@@ -41,7 +42,7 @@ export const courseService = {
         tags: payload.tags,
       },
     });
-
+    console.log('course', course)
     await clearCourseCache();
     return course;
   },
@@ -93,7 +94,7 @@ export const courseService = {
           thumbnail: true,
           previewVideo: true,
           price: true,
-         
+          slug: true,
           hasCertificate: true,
           createdAt: true,
 
@@ -182,7 +183,7 @@ export const courseService = {
           price: true,
           hasCertificate: true,
           createdAt: true,
-
+          slug: true,
           category: {
             select: {
               id: true,
@@ -218,17 +219,18 @@ export const courseService = {
     };
   },
   // ================= GET COURSE BY ID =================
-  async getCourseById(id: string) {
+  async getCourseBySlug(slug: string) {
     const course = await prisma.course.findUnique({
-      where: { id, isDeleted: false },
+      where: { slug, isDeleted: false },
       select: {
         id: true,
         title: true,
+        slug: true,
         description: true,
         thumbnail: true,
         previewVideo: true,
         price: true,
-  
+
         hasCertificate: true,
 
         learningOutcomes: true,
@@ -388,15 +390,15 @@ export const courseService = {
   // ================= UPDATE COURSE =================
   async updateCourse(id: string, payload: Partial<IUpdateCourse>) {
 
-    console.log("payload",payload)
-    const existing = await prisma.course.findUnique({ where: { id } });
+    console.log("payload", payload)
+    const existing = await prisma.course.findFirst({ where: { OR: [{ id }, { slug: id }] } });
 
     if (!existing) {
       throw new CustomAppError(404, "Course not found");
     }
 
     const updated = await prisma.course.update({
-      where: { id },
+      where: { id: existing.id },
       data: payload,
     });
 
@@ -406,7 +408,7 @@ export const courseService = {
 
   // ================= DELETE COURSE =================
   async deleteCourse(id: string, user: any) {
-    const existing = await prisma.course.findUnique({ where: { id } });
+    const existing = await prisma.course.findFirst({ where: { OR: [{ id }, { slug: id }] } });
 
     if (!existing) {
       throw new CustomAppError(404, "Course not found");
@@ -420,7 +422,7 @@ export const courseService = {
     }
 
     await prisma.course.update({
-      where: { id },
+      where: { id: existing.id },
       data: {
         isDeleted: true,
         isPublished: false,
@@ -434,14 +436,14 @@ export const courseService = {
 
   // ================= TOGGLE PUBLISH =================
   async togglePublish(id: string) {
-    const existing = await prisma.course.findUnique({ where: { id } });
+    const existing = await prisma.course.findFirst({ where: { OR: [{ id }, { slug: id }] } });
 
     if (!existing) {
       throw new CustomAppError(404, "Course not found");
     }
 
     const updated = await prisma.course.update({
-      where: { id },
+      where: { id: existing.id },
       data: {
         isPublished: !existing.isPublished,
       },

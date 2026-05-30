@@ -46,7 +46,7 @@ router.get("/instructor", authentication, authorization(Role.instructor), course
 
 // ================= TOGGLE PUBLISH =================
 router.patch(
-  "/:id/toggle-publish",
+  "/:slug/toggle-publish",
   authentication,
   authorization(Role.instructor),
   courseController.togglePublish
@@ -54,7 +54,7 @@ router.patch(
 
 // ================= UPDATE COURSE =================
 router.patch(
-  "/:id",
+  "/:slug",
   authentication,
   authorization(Role.instructor),
   upload.single("thumbnail"),
@@ -64,17 +64,17 @@ router.patch(
 
 // ================= DELETE COURSE =================
 router.delete(
-  "/:id",
+  "/:slug",
   authentication,
   authorization(Role.admin, Role.instructor),
   courseController.deleteCourse
 );
 
-// ================= GET COURSE BY ID =================
+// ================= GET COURSE BY SLUG =================
 router.get(
-  "/:id",
+  "/:slug",
 
-  courseController.getCourseById
+  courseController.getCourseBySlug
 );
 
 export const courseRouter: Router = router;

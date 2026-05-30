@@ -27,11 +27,15 @@ export const authControllers = {
 
   // ============================== REFRESH Token ==============================
   refreshToken: catchAsyncHandler(async (req: Request, res: Response) => {
-    const token = req.cookies.refreshToken;
-    const { accessToken, refreshToken: newRefreshToken, user } = await authServices.refreshToken(token);
-    setRefreshTokenCookie(res, newRefreshToken);
-    console.log('Access token refreshed:', accessToken);
-    sendResponse(res, 200, "Access token refreshed", { accessToken, user });
+    try {
+      const token = req.cookies.refreshToken;
+      const { accessToken, refreshToken: newRefresh, user } = await authServices.refreshToken(token);
+      setRefreshTokenCookie(res, newRefresh);
+      sendResponse(res, 200, "Access token refreshed", { accessToken, user });
+    } catch (err: any) {
+      // err is a CustomAppError instance; sendResponse formats it consistently
+      sendResponse(res, err.statusCode ?? 500, err.message);
+    }
   }),
 
   // ============================== LOGOUT ==============================
