@@ -13,6 +13,7 @@ const createCheckout = catchAsyncHandler(async (req: Request, res: Response) => 
   const { courseId } = req.body as { courseId: string };
   const studentId = req.user!.id;
   const result = await paymentService.createCheckoutSession(studentId, courseId);
+  console.log("result from payment controller", result);
   sendResponse(res, 201, "Checkout session created", result);
 });
 
@@ -25,34 +26,156 @@ const paymentSuccess = async (req: Request, res: Response) => {
     await paymentService.verifyPaymentAndEnroll(sessionId);
   }
 
-  const html = `
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Payment Successful</title>
-      <style>
-        body { font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background-color: #09090b; color: #fafafa; text-align: center; }
-        .container { background: #18181b; padding: 3rem; border-radius: 1.5rem; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); border: 1px solid #27272a; max-width: 500px; width: 90%; }
-        h1 { margin-top: 0; color: #4ade80; font-size: 2.25rem; font-weight: 900; letter-spacing: -0.025em; }
-        p { margin-bottom: 2rem; color: #a1a1aa; line-height: 1.6; font-size: 1.125rem; }
-        .btn { display: inline-block; padding: 0.875rem 2rem; background-color: #22c55e; color: #000; text-decoration: none; border-radius: 0.75rem; font-weight: 700; transition: all 0.2s; box-shadow: 0 10px 15px -3px rgba(34, 197, 94, 0.2); }
-        .btn:hover { background-color: #16a34a; transform: translateY(-2px); box-shadow: 0 10px 20px -3px rgba(34, 197, 94, 0.3); }
-        .icon { font-size: 5rem; margin-bottom: 1.5rem; filter: drop-shadow(0 0 20px rgba(74, 222, 128, 0.2)); }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <div class="icon">✅</div>
-        <h1>Payment Successful!</h1>
-        <p>Thank you for your purchase. Your payment was processed successfully, and you are now enrolled in the course.</p>
-        <a href="${frontendUrl}/dashboard/student/my-courses" class="btn">Go to My Courses</a>
-      </div>
-    </body>
-    </html>
-  `;
-  res.send(html);
+const html = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mentoro | Payment Successful</title>
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', 'Segoe UI', sans-serif;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: #fff;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* BACKGROUND IMAGE */
+    body::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: url("https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=1600&q=80");
+      background-size: cover;
+      background-position: center;
+      filter: brightness(0.25);
+      z-index: -2;
+    }
+
+    /* DARK OVERLAY */
+    body::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at top, rgba(34,197,94,0.15), transparent 60%);
+      z-index: -1;
+    }
+
+    .card {
+      background: rgba(24, 24, 27, 0.85);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 3rem 2.5rem;
+      border-radius: 20px;
+      text-align: center;
+      width: 90%;
+      max-width: 520px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+      animation: fadeIn 0.6s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .logo {
+      font-size: 1.2rem;
+      font-weight: 800;
+      letter-spacing: 2px;
+      color: #22c55e;
+      margin-bottom: 1rem;
+    }
+
+    .icon {
+      font-size: 4rem;
+      margin-bottom: 1rem;
+      animation: pop 0.6s ease;
+    }
+
+    @keyframes pop {
+      0% { transform: scale(0.5); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    h1 {
+      font-size: 2rem;
+      font-weight: 900;
+      color: #22c55e;
+      margin-bottom: 0.5rem;
+    }
+
+    p {
+      color: #d4d4d8;
+      line-height: 1.6;
+      margin-bottom: 2rem;
+      font-size: 1rem;
+    }
+
+    .btn {
+      display: inline-block;
+      padding: 0.9rem 2rem;
+      background: #22c55e;
+      color: #000;
+      font-weight: 700;
+      border-radius: 12px;
+      text-decoration: none;
+      transition: 0.3s;
+      box-shadow: 0 10px 30px rgba(34,197,94,0.3);
+    }
+
+    .btn:hover {
+      transform: translateY(-3px);
+      background: #16a34a;
+      box-shadow: 0 15px 40px rgba(34,197,94,0.4);
+    }
+
+    .sub {
+      margin-top: 1rem;
+      font-size: 0.85rem;
+      color: #a1a1aa;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="card">
+    <div class="logo">MENTORO</div>
+
+    <div class="icon">🎉</div>
+
+    <h1>Payment Successful</h1>
+
+    <p>
+      Congratulations! You’ve successfully enrolled in your course.
+      Start learning now and upgrade your skills with Mentoro.
+    </p>
+
+    <a href="${frontendUrl}/dashboard/student/my-courses" class="btn">
+      Go to My Learning
+    </a>
+
+    <div class="sub">
+      Keep learning. Keep growing 🚀
+    </div>
+  </div>
+</body>
+</html>
+`;
+
+res.send(html);
 };
 
 const paymentCancel = (req: Request, res: Response) => {

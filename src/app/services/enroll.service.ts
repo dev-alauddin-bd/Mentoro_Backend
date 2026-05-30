@@ -8,7 +8,14 @@ import { paymentService } from "./payment.service";
 
 // ============================== ENROLL In Course ==============================
 const enrollCourse = async (studentId: string, courseId: string) => {
-  const course = await prisma.course.findUnique({ where: { id: courseId } });
+  const course = await prisma.course.findFirst({
+    where: {
+      OR: [
+        { id: courseId },
+        { slug: courseId }
+      ]
+    }
+  });
 
   if (!course) {
     throw new CustomAppError(404, "Course not found");
@@ -19,10 +26,9 @@ const enrollCourse = async (studentId: string, courseId: string) => {
   }
 
   return await prisma.enrollment.upsert({
-    where: { studentId_courseId: { studentId, courseId } },
+    where: { studentId_courseId: { studentId, courseId: course.id } },
     update: {},
-    create: { studentId, courseId },
-
+    create: { studentId, courseId: course.id },
   });
 };
 
@@ -68,8 +74,13 @@ const getMyEnrollments = async (studentId: string, query: Record<string, unknown
 // ============================== GET Enrolled Content ==============================
 const getEnrolledCourseContent = async (studentId: string, courseId: string) => {
   // Check if course exists
-  const course = await prisma.course.findUnique({
-    where: { id: courseId },
+  const course = await prisma.course.findFirst({
+    where: {
+      OR: [
+        { id: courseId },
+        { slug: courseId }
+      ]
+    },
     select: {
       id: true,
       title: true,
@@ -112,7 +123,7 @@ const getEnrolledCourseContent = async (studentId: string, courseId: string) => 
 
   // Check enrollment
   const enrollment = await prisma.enrollment.findUnique({
-    where: { studentId_courseId: { studentId, courseId } }
+    where: { studentId_courseId: { studentId, courseId: course.id } }
   });
 
   if (!enrollment) {
@@ -168,8 +179,21 @@ export const enrollService = {
   getMyEnrollments,
   getEnrolledCourseContent,
   cancelEnrollment: async (studentId: string, courseId: string) => {
+    const course = await prisma.course.findFirst({
+      where: {
+        OR: [
+          { id: courseId },
+          { slug: courseId }
+        ]
+      }
+    });
+
+    if (!course) {
+      throw new CustomAppError(404, "Course not found");
+    }
+
     const enrollment = await prisma.enrollment.findUnique({
-      where: { studentId_courseId: { studentId, courseId } },
+      where: { studentId_courseId: { studentId, courseId: course.id } },
       include: { course: true }
     });
 
@@ -180,12 +204,12 @@ export const enrollService = {
     // If it's a paid course, we handle it through the payment service (refund)
     if (enrollment.course.price > 0) {
 
-      return await paymentService.refundCourse(studentId, courseId);
+      return await paymentService.refundCourse(studentId, course.id);
     }
 
     // If it's a free course, just delete the enrollment
     await prisma.enrollment.delete({
-      where: { studentId_courseId: { studentId, courseId } }
+      where: { studentId_courseId: { studentId, courseId: course.id } }
     });
 
     return { message: "Unenrolled from free course successfully" };
