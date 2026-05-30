@@ -79,75 +79,6 @@ Answer clearly in same language.
   }
 };
 
-// ================= MODULE QUIZ (FIXED) =================
-const generateModuleQuiz = async (moduleId: string) => {
-  try {
-    const cached = quizCache.get(moduleId);
-    if (cached && cached.expires > Date.now()) {
-      return cached.data;
-    }
-
-    const model = getModel();
-
-    const moduleData = await prisma.module.findUnique({
-      where: { id: moduleId },
-      select: {
-        title: true,
-        course: { select: { title: true } },
-        lessons: { select: { title: true, content: true } },
-      },
-    });
-
-    if (!moduleData) {
-      throw new CustomAppError(404, "Module not found");
-    }
-
-    const content = moduleData.lessons
-      .map((l) => `Lesson: ${l.title}\n${l.content || ""}`)
-      .join("\n\n");
-
-    const prompt = PromptTemplate.fromTemplate(`
-Generate 10 MCQ questions from module content.
-
-COURSE: {course}
-MODULE: {module}
-
-CONTENT:
-{content}
-
-Return ONLY JSON array:
-[
-  {
-    "question": "",
-    "options": ["A","B","C","D"],
-    "correctAnswer": ""
-  }
-]
-`);
-
-    const chain = prompt.pipe(model).pipe(new StringOutputParser());
-
-    const response = await chain.invoke({
-      course: moduleData.course?.title || "",
-      module: moduleData.title,
-      content,
-    });
-
-    const json = extractJSON(response);
-    const parsed = JSON.parse(json);
-
-    quizCache.set(moduleId, {
-      data: parsed,
-      expires: Date.now() + CACHE_TTL,
-    });
-
-    return { success: true, data: parsed };
-  } catch (error) {
-    logger.error("Module Quiz Error:", error);
-    throw error;
-  }
-};
-
 
 
 // ============================== GENERATE CONTENT ==============================
@@ -246,7 +177,6 @@ const generateContent = async (topicOrDraft: string) => {
 };
 
 // ================= LIVE SESSION =================
-// ================= LIVE SESSION =================
 
 
 const generateLiveSessionContent = async (title: string) => {
@@ -288,7 +218,7 @@ Format:
 // ================= EXPORT =================
 export const AiService = {
   chatAssistant,
-  generateModuleQuiz,
+
   generateContent,
   generateLiveSessionContent,
 };

@@ -7,14 +7,14 @@ datasource db {
 }
 
 model User {
-  id       String     @id @default(uuid())
-  name     String
-  email    String     @unique
-  password String
-  role     Role       @default(student)
-  avatar   String?
-  status   UserStatus @default(active)
-
+  id                    String                 @id @default(uuid())
+  name                  String
+  email                 String                 @unique
+  password              String
+  role                  Role                   @default(student)
+  avatar                String?
+  status                UserStatus             @default(active)
+  phone                 String?
   createdAt             DateTime               @default(now())
   updatedAt             DateTime               @updatedAt
   courses               Course[]
@@ -22,7 +22,6 @@ model User {
   reviews               Review[]
   payments              Payment[]
   assignmentSubmissions AssignmentSubmission[]
-  quizSubmissions       QuizSubmission[]
   liveSessions          LiveSession[]
   enrollments           Enrollment[]
 
@@ -46,7 +45,7 @@ model Course {
   id           String  @id @default(uuid())
   title        String
   description  String?
-  slug    String  @unique
+  slug         String  @unique
   thumbnail    String
   previewVideo String
   price        Float   @default(0)
@@ -87,8 +86,7 @@ model Module {
   course      Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
   lessons     Lesson[]
   assignments Assignment[]
-  quiz        Quiz?
-
+  
   @@index([courseId])
   @@index([isDeleted])
   @@map("modules")
@@ -127,13 +125,20 @@ model Assignment {
 }
 
 model Enrollment {
-  id           String   @id @default(uuid())
-  studentId    String
-  courseId     String
-  enrolledAt   DateTime @default(now())
-  lastActivity DateTime @updatedAt
-  student      User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  course       Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  id         String        @id @default(uuid())
+  studentId  String
+  courseId   String
+  paymentId  String?
+  amount     Float         @default(0)
+  currency   String        @default("usd")
+  status     PaymentStatus @default(PENDING)
+  phone      String
+  email      String
+  name       String
+  enrolledAt DateTime      @default(now())
+  student    User          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  course     Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  payments   Payment[]
 
   @@unique([studentId, courseId])
   @@index([courseId])
@@ -176,6 +181,7 @@ model Payment {
   id       String @id @default(uuid())
   amount   Float
   currency String @default("usd")
+  enrollId String
 
   status PaymentStatus @default(PENDING)
   type   PaymentType   @default(COURSE_PURCHASE)
@@ -189,7 +195,8 @@ model Payment {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  student User @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  enrollment Enrollment @relation(fields: [enrollId], references: [id], onDelete: Cascade)
+  student    User       @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
 
@@ -219,51 +226,8 @@ model AssignmentSubmission {
   @@map("assignment_submissions")
 }
 
-model Quiz {
-  id       String @id @default(uuid())
-  moduleId String @unique
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
 
-  module Module @relation(fields: [moduleId], references: [id], onDelete: Cascade)
-
-  questions   QuizQuestion[]
-  submissions QuizSubmission[]
-
-  @@map("quizzes")
-}
-
-model QuizQuestion {
-  id            String   @id @default(uuid())
-  quizId        String
-  question      String
-  options       String[]
-  correctAnswer String
-  order         Int      @default(0)
-
-  quiz Quiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
-
-  @@index([quizId])
-  @@map("quiz_questions")
-}
-
-model QuizSubmission {
-  id          String   @id @default(uuid())
-  quizId      String
-  score       Int
-  total       Int
-  percentage  Float
-  studentId   String
-  submittedAt DateTime @default(now())
-  quiz        Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
-  user        User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
-
-  @@unique([studentId, quizId])
-  @@index([quizId])
-  @@index([studentId])
-  @@map("quiz_submissions")
-}
 
 model LiveSession {
   id          String  @id @default(uuid())

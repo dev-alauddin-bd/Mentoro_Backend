@@ -39,14 +39,7 @@ export const aiController = {
     }
   },
 
-  // ================= GENERATE QUIZ (MODULE LEVEL FIXED) =================
-  generateQuiz: catchAsyncHandler(async (req: Request, res: Response) => {
-    const { moduleId } = req.params;
 
-    const quiz = await AiService.generateModuleQuiz(moduleId as string);
-
-    sendResponse(res, 200, "Module quiz generated successfully", quiz);
-  }),
 
   // ================= COURSE CONTENT =================
   generateCourseContent: catchAsyncHandler(

@@ -8,9 +8,13 @@ import globalErrorHandler from "./app/middlewares/globalErrorHandler";
 import { sanitizeRequest } from "./app/middlewares/sanitize.middleware";
 import { baseRouter } from "./app/routes/baseRouter";
 import { webhookRouter } from "./app/routes/webhook.route";
-
+import path from "path";
 const app: Application = express();
 
+app.use(
+  "/public",
+  express.static(path.join(process.cwd(), "src", "app", "public"))
+);
 // ==============================
 // TRUST PROXY (Railway / Render safe)
 // ==============================

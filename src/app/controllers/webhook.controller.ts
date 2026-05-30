@@ -57,7 +57,7 @@ export const webhookController = {
 
         await prisma.$transaction(async (tx) => {
           // 1. Update payment
-          await tx.payment.update({
+          const payment = await tx.payment.update({
             where: { stripeSessionId: session.id },
             data: {
               status: "COMPLETED",
@@ -65,19 +65,15 @@ export const webhookController = {
             },
           });
 
-          // 2. Create enrollment (FIXED)
-          await tx.enrollment.upsert({
+          // 2. Update enrollment (Fixes TS missing fields error)
+          await tx.enrollment.update({
             where: {
-              studentId_courseId: {
-                studentId: studentProfile.id,
-                courseId,
-              },
+              id: payment.enrollId,
             },
-            create: {
-              studentId: studentProfile.id,
-              courseId,
+            data: {
+              status: "COMPLETED",
+              paymentId: payment.id,
             },
-            update: {},
           });
         });
 

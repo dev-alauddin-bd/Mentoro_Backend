@@ -1,3 +1,4 @@
+import { PaymentStatus } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import { stripe } from "../../lib/stripe";
 import { CustomAppError } from "../errors/customError";
@@ -30,7 +31,7 @@ export const paymentService = {
       mode: "payment",
 
       success_url: `${process.env.BACKEND_URL}/api/payments/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.BACKEND_URL}/api/payments/cancel`,
+      cancel_url: `${process.env.BACKEND_URL}/api/payments/cancel?session_id={CHECKOUT_SESSION_ID}`,
 
       customer_email: user.email,
 
@@ -54,14 +55,30 @@ export const paymentService = {
       ],
     });
 
+    const enrollment = await prisma.enrollment.upsert({
+      where: { studentId_courseId: { studentId, courseId } },
+      update: {},
+      create: {
+        studentId,
+        courseId,
+        phone: user.phone || "N/A",
+        email: user.email,
+        name: user.name,
+        amount: course.price,
+        currency: "usd",
+        status: PaymentStatus.PENDING,
+      }
+    });
+
     await prisma.payment.create({
       data: {
         amount: course.price,
         currency: "usd",
-        status: "PENDING",
+        status: PaymentStatus.PENDING,
         stripeSessionId: session.id,
         studentId,
         courseId,
+        enrollId: enrollment.id,
       },
     });
 
@@ -72,24 +89,25 @@ export const paymentService = {
   async verifyPaymentAndEnroll(sessionId: string) {
     const session = await stripe.checkout.sessions.retrieve(sessionId);
 
-    if (session.payment_status !== "paid") return false;
+    if (session.payment_status !== "paid") return null;
 
     const studentId = session.metadata?.studentId;
     const courseId = session.metadata?.courseId;
 
-    if (!studentId || !courseId) return false;
+    if (!studentId || !courseId) return null;
 
     const existingPayment = await prisma.payment.findUnique({
       where: { stripeSessionId: sessionId },
+      include: { course: true },
     });
 
     if (existingPayment?.status === "COMPLETED") {
-      return true; // idempotency safety
+      return existingPayment; // idempotency safety
     }
 
     await prisma.$transaction(async (tx) => {
       // 1. update payment
-      await tx.payment.update({
+      const payment = await tx.payment.update({
         where: { stripeSessionId: sessionId },
         data: {
           status: "COMPLETED",
@@ -97,23 +115,38 @@ export const paymentService = {
         },
       });
 
-      // 2. create enrollment safely
-      await tx.enrollment.upsert({
-        where: {
-          studentId_courseId: {
-            studentId,
-            courseId,
-          },
-        },
-        create: {
-          studentId,
-          courseId,
-        },
-        update: {},
+      // 2. update enrollment safely
+      await tx.enrollment.update({
+        where: { id: payment.enrollId },
+        data: {
+          status: "COMPLETED",
+          paymentId: payment.id,
+        }
       });
     });
 
-    return true;
+    return await prisma.payment.findUnique({
+      where: { stripeSessionId: sessionId },
+      include: { course: true },
+    });
+  },
+
+  // ================= CANCEL/FAIL PAYMENT =================
+  async cancelPayment(sessionId: string) {
+    const existingPayment = await prisma.payment.findUnique({
+      where: { stripeSessionId: sessionId },
+    });
+
+    if (!existingPayment || existingPayment.status === "COMPLETED") {
+      return null;
+    }
+
+    return await prisma.payment.update({
+      where: { stripeSessionId: sessionId },
+      data: {
+        status: "FAILED",
+      },
+    });
   },
 
   // ================= REFUND =================

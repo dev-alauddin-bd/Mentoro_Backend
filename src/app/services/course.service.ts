@@ -323,7 +323,6 @@ export const courseService = {
         },
         skip,
         take: limit,
-        orderBy: { lastActivity: "desc" },
         include: {
           course: {
             include: {
@@ -381,10 +380,6 @@ export const courseService = {
       update: {},
     });
 
-    await prisma.enrollment.update({
-      where: { id: enrollment.id },
-      data: { lastActivity: new Date() },
-    });
   },
 
   // ================= UPDATE COURSE =================

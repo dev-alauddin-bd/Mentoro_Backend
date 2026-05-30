@@ -6,6 +6,7 @@ import { Request, RequestHandler, Response } from "express";
 import { paymentService } from "../services/payment.service";
 import { catchAsyncHandler } from "../utils/catchAsyncHandler";
 import { sendResponse } from "../utils/sendResponse";
+import env from "../config";
 
 // ============================== CREATE Checkout ==============================
 const createCheckout = catchAsyncHandler(async (req: Request, res: Response) => {
@@ -22,187 +23,401 @@ const paymentSuccess = async (req: Request, res: Response) => {
   const sessionId = req.query.session_id as string;
   const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
 
+  let paymentInfo: any = null;
   if (sessionId) {
-    await paymentService.verifyPaymentAndEnroll(sessionId);
+    paymentInfo = await paymentService.verifyPaymentAndEnroll(sessionId);
   }
 
-const html = `
+  const courseTitle = paymentInfo?.course?.title || "Premium Course";
+  const amount = paymentInfo ? paymentInfo.amount.toFixed(2) : "0.00";
+  const currency = paymentInfo?.currency?.toUpperCase() || "USD";
+  const transactionId = paymentInfo?.stripePaymentId || sessionId || "N/A";
+
+  const html = `
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Mentoro | Payment Successful</title>
-
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap');
+    * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      font-family: 'Inter', 'Segoe UI', sans-serif;
+      font-family: 'Inter', sans-serif;
       height: 100vh;
       display: flex;
       justify-content: center;
       align-items: center;
+      background-color: #09090b; /* Deep background */
       color: #fff;
       overflow: hidden;
       position: relative;
     }
-
-    /* BACKGROUND IMAGE */
+    /* BACKGROUND IMAGE & OVERLAY */
     body::before {
       content: "";
       position: absolute;
       inset: 0;
-      background: url("https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=1600&q=80");
-      background-size: cover;
-      background-position: center;
-      filter: brightness(0.25);
+      background: url("${env.backendUrl}/public/images/bg.png") center/cover;
+      filter: brightness(0.2);
       z-index: -2;
     }
-
-    /* DARK OVERLAY */
     body::after {
       content: "";
       position: absolute;
       inset: 0;
-      background: radial-gradient(circle at top, rgba(34,197,94,0.15), transparent 60%);
+      /* Orange glow at the top for brand */
+      background: radial-gradient(circle at top, rgba(238, 123, 0, 0.2), transparent 60%);
       z-index: -1;
     }
-
     .card {
-      background: rgba(24, 24, 27, 0.85);
-      backdrop-filter: blur(12px);
-      border: 1px solid rgba(255,255,255,0.08);
-      padding: 3rem 2.5rem;
-      border-radius: 20px;
+      background: rgba(24, 24, 27, 0.7);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(238, 123, 0, 0.2);
+      padding: 3.5rem 2.5rem;
+      border-radius: 24px;
       text-align: center;
       width: 90%;
-      max-width: 520px;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.6);
-      animation: fadeIn 0.6s ease;
+      max-width: 500px;
+      box-shadow: 0 25px 60px rgba(0,0,0,0.8), 0 0 40px rgba(238, 123, 0, 0.1);
+      animation: slideUp 0.7s cubic-bezier(0.16, 1, 0.3, 1);
     }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(20px); }
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(30px); }
       to { opacity: 1; transform: translateY(0); }
     }
-
-    .logo {
-      font-size: 1.2rem;
-      font-weight: 800;
-      letter-spacing: 2px;
-      color: #22c55e;
-      margin-bottom: 1rem;
+    .logo-img {
+      width: 55px;
+      height: 55px;
+      object-fit: contain;
+      display: block;
+      margin: 0 auto;
     }
-
+    .icon-wrapper {
+      width: 90px;
+      height: 90px;
+      background: rgba(238, 123, 0, 0.1);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 1.5rem;
+      box-shadow: 0 0 30px rgba(238, 123, 0, 0.3);
+      border: 1px solid rgba(238, 123, 0, 0.3);
+      animation: pulse 2s infinite;
+    }
     .icon {
-      font-size: 4rem;
-      margin-bottom: 1rem;
-      animation: pop 0.6s ease;
+      font-size: 3.5rem;
+      filter: drop-shadow(0 0 10px rgba(238, 123, 0, 0.5));
     }
-
-    @keyframes pop {
-      0% { transform: scale(0.5); opacity: 0; }
-      100% { transform: scale(1); opacity: 1; }
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(238, 123, 0, 0.4); }
+      70% { box-shadow: 0 0 0 20px rgba(238, 123, 0, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(238, 123, 0, 0); }
     }
-
     h1 {
-      font-size: 2rem;
-      font-weight: 900;
-      color: #22c55e;
-      margin-bottom: 0.5rem;
+      font-size: 2.2rem;
+      font-weight: 800;
+      color: #fff;
+      margin-bottom: 0.75rem;
+      letter-spacing: -0.5px;
     }
-
     p {
-      color: #d4d4d8;
-      line-height: 1.6;
+      color: #a1a1aa;
+      line-height: 1.7;
       margin-bottom: 2rem;
-      font-size: 1rem;
+      font-size: 1.05rem;
     }
-
+    .payment-details {
+      background: rgba(0, 0, 0, 0.4);
+      border-radius: 12px;
+      padding: 1.25rem;
+      margin-bottom: 2rem;
+      text-align: left;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .detail-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.75rem;
+      font-size: 0.95rem;
+    }
+    .detail-row:last-child {
+      margin-bottom: 0;
+    }
+    .detail-label {
+      color: #a1a1aa;
+    }
+    .detail-value {
+      color: #fff;
+      font-weight: 600;
+      text-align: right;
+      max-width: 60%;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .amount-value {
+      color: #ee7b00;
+      font-size: 1.1rem;
+      font-weight: 800;
+    }
     .btn {
       display: inline-block;
-      padding: 0.9rem 2rem;
-      background: #22c55e;
-      color: #000;
+      padding: 1rem 2.5rem;
+      background: linear-gradient(135deg, #ee7b00, #ff9500);
+      color: #fff;
       font-weight: 700;
-      border-radius: 12px;
+      font-size: 1.05rem;
+      border-radius: 14px;
       text-decoration: none;
-      transition: 0.3s;
-      box-shadow: 0 10px 30px rgba(34,197,94,0.3);
+      transition: all 0.3s ease;
+      box-shadow: 0 10px 25px rgba(238, 123, 0, 0.3);
+      position: relative;
+      overflow: hidden;
+      width: 100%;
     }
-
+    .btn::after {
+      content: '';
+      position: absolute;
+      top: 0; left: -100%;
+      width: 100%; height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+      transition: 0.5s;
+    }
+    .btn:hover::after {
+      left: 100%;
+    }
     .btn:hover {
       transform: translateY(-3px);
-      background: #16a34a;
-      box-shadow: 0 15px 40px rgba(34,197,94,0.4);
+      box-shadow: 0 15px 35px rgba(238, 123, 0, 0.4);
     }
-
-    .sub {
+    .action-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
       margin-top: 1rem;
-      font-size: 0.85rem;
-      color: #a1a1aa;
+    }
+    .btn-outline {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 0.85rem 2.5rem;
+      background: transparent;
+      color: #ee7b00;
+      font-weight: 600;
+      font-size: 1rem;
+      border-radius: 14px;
+      border: 1.5px solid rgba(238, 123, 0, 0.5);
+      cursor: pointer;
+      transition: all 0.3s ease;
+      width: 100%;
+    }
+    .btn-outline:hover {
+      background: rgba(238, 123, 0, 0.1);
+      border-color: #ee7b00;
+      transform: translateY(-2px);
+    }
+    
+    @media print {
+      body {
+        background: #fff !important;
+      }
+      body::before, body::after, .action-buttons {
+        display: none !important;
+      }
+      .card {
+        box-shadow: none !important;
+        border: 1px solid #ddd !important;
+        background: #fff !important;
+        color: #000 !important;
+        margin: 0;
+        padding: 2rem;
+        width: 100%;
+        max-width: none;
+      }
+      h1, p, .detail-label, .detail-value {
+        color: #000 !important;
+      }
+      .payment-details {
+        background: transparent !important;
+        border: 1px solid #ccc !important;
+      }
+      .icon-wrapper {
+        animation: none !important;
+        box-shadow: none !important;
+      }
     }
   </style>
 </head>
-
 <body>
   <div class="card">
-    <div class="logo">MENTORO</div>
-
-    <div class="icon">🎉</div>
-
-    <h1>Payment Successful</h1>
-
+   
+    <div class="icon-wrapper">
+      <div class="icon"> <img src="${env.backendUrl}/public/images/logo.svg" alt="Mentoro Logo" class="logo-img" onerror="this.src='${env.backendUrl}/public/images/logo.png'" /></div>
+    </div>
+    <h1>Enrollment Success</h1>
     <p>
-      Congratulations! You’ve successfully enrolled in your course.
-      Start learning now and upgrade your skills with Mentoro.
+      Your premium learning journey begins here. You have successfully enrolled.
     </p>
 
-    <a href="${frontendUrl}/dashboard/student/my-courses" class="btn">
-      Go to My Learning
-    </a>
+    ${paymentInfo ? `
+    <div class="payment-details">
+      <div class="detail-row">
+        <span class="detail-label">Course</span>
+        <span class="detail-value" title="${courseTitle}">${courseTitle}</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Transaction ID</span>
+        <span class="detail-value" style="font-size: 0.85rem;" title="${transactionId}">${transactionId}</span>
+      </div>
+      <div class="detail-row" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px dashed rgba(255,255,255,0.1);">
+        <span class="detail-label">Amount Paid</span>
+        <span class="detail-value amount-value">${amount} ${currency}</span>
+      </div>
+    </div>
+    ` : ''}
 
-    <div class="sub">
-      Keep learning. Keep growing 🚀
+    <div class="action-buttons">
+      <a href="${frontendUrl}/dashboard/student/my-courses" class="btn">
+        Go to My Learning
+      </a>
+
+
     </div>
   </div>
 </body>
 </html>
 `;
 
-res.send(html);
+  res.send(html);
 };
 
-const paymentCancel = (req: Request, res: Response) => {
+const paymentCancel = async (req: Request, res: Response) => {
+  const sessionId = req.query.session_id as string;
   const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
-  
+
+  if (sessionId) {
+    await paymentService.cancelPayment(sessionId);
+  }
+
   const html = `
     <!DOCTYPE html>
     <html lang="en">
     <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Payment Cancelled</title>
+      <title>Mentoro | Payment Cancelled</title>
       <style>
-        body { font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background-color: #09090b; color: #fafafa; text-align: center; }
-        .container { background: #18181b; padding: 3rem; border-radius: 1.5rem; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); border: 1px solid #27272a; max-width: 500px; width: 90%; }
-        h1 { margin-top: 0; color: #fbbf24; font-size: 2.25rem; font-weight: 900; letter-spacing: -0.025em; }
-        p { margin-bottom: 2rem; color: #a1a1aa; line-height: 1.6; font-size: 1.125rem; }
-        .btn { display: inline-block; padding: 0.875rem 2rem; background-color: #f59e0b; color: #000; text-decoration: none; border-radius: 0.75rem; font-weight: 700; transition: all 0.2s; box-shadow: 0 10px 15px -3px rgba(245, 158, 11, 0.2); }
-        .btn:hover { background-color: #d97706; transform: translateY(-2px); box-shadow: 0 10px 20px -3px rgba(245, 158, 11, 0.3); }
-        .icon { font-size: 5rem; margin-bottom: 1.5rem; filter: drop-shadow(0 0 20px rgba(251, 191, 36, 0.2)); }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap');
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+          font-family: 'Inter', sans-serif;
+          height: 100vh;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          background-color: #09090b;
+          color: #fff;
+          overflow: hidden;
+          position: relative;
+        }
+        body::before {
+          content: "";
+          position: absolute;
+          inset: 0;
+          background: url("${env.backendUrl}/public/images/bg.png") center/cover;
+          filter: brightness(0.2);
+          z-index: -2;
+        }
+        body::after {
+          content: "";
+          position: absolute;
+          inset: 0;
+          background: radial-gradient(circle at top, rgba(251, 191, 36, 0.15), transparent 60%);
+          z-index: -1;
+        }
+        .card {
+          background: rgba(24, 24, 27, 0.7);
+          backdrop-filter: blur(16px);
+          -webkit-backdrop-filter: blur(16px);
+          border: 1px solid rgba(255, 255, 255, 0.05);
+          padding: 3.5rem 2.5rem;
+          border-radius: 24px;
+          text-align: center;
+          width: 90%;
+          max-width: 500px;
+          box-shadow: 0 25px 60px rgba(0,0,0,0.8);
+          animation: slideUp 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        @keyframes slideUp {
+          from { opacity: 0; transform: translateY(30px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .logo-img {
+          width: 55px;
+          height: 55px;
+          object-fit: contain;
+          display: block;
+          margin: 0 auto;
+        }
+        .icon-wrapper {
+          width: 90px;
+          height: 90px;
+          background: rgba(251, 191, 36, 0.1);
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin: 0 auto 1.5rem;
+          border: 1px solid rgba(251, 191, 36, 0.2);
+        }
+        .icon {
+          font-size: 3.5rem;
+          filter: drop-shadow(0 0 10px rgba(251, 191, 36, 0.4));
+        }
+        h1 {
+          font-size: 2.2rem;
+          font-weight: 800;
+          color: #fff;
+          margin-bottom: 0.75rem;
+          letter-spacing: -0.5px;
+        }
+        p {
+          color: #a1a1aa;
+          line-height: 1.7;
+          margin-bottom: 2.5rem;
+          font-size: 1.05rem;
+        }
+        .btn {
+          display: inline-block;
+          padding: 1rem 2.5rem;
+          background: rgba(255, 255, 255, 0.1);
+          color: #fff;
+          font-weight: 600;
+          font-size: 1.05rem;
+          border-radius: 14px;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          text-decoration: none;
+          transition: all 0.3s ease;
+        }
+        .btn:hover {
+          background: rgba(255, 255, 255, 0.15);
+          transform: translateY(-2px);
+        }
       </style>
     </head>
     <body>
-      <div class="container">
-        <div class="icon">⚠️</div>
+      <div class="card">
+        <div class="icon-wrapper">
+          <div class="icon"><img src="${env.backendUrl}/public/images/logo.svg" alt="Mentoro Logo" class="logo-img" onerror="this.src='${env.backendUrl}/public/images/logo.png'" /></div>
+        </div>
         <h1>Payment Cancelled</h1>
-        <p>You cancelled the payment process. Your enrollment has not been completed.</p>
+        <p>Your transaction was cancelled. If you're ready to upgrade your skills, you can try enrolling again.</p>
         <a href="${frontendUrl}" class="btn">Return to Home</a>
       </div>
     </body>
@@ -213,30 +428,122 @@ const paymentCancel = (req: Request, res: Response) => {
 
 const paymentFail = (req: Request, res: Response) => {
   const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
-  
+
   const html = `
     <!DOCTYPE html>
     <html lang="en">
     <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Payment Failed</title>
+      <title>Mentoro | Payment Failed</title>
       <style>
-        body { font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background-color: #09090b; color: #fafafa; text-align: center; }
-        .container { background: #18181b; padding: 3rem; border-radius: 1.5rem; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); border: 1px solid #27272a; max-width: 500px; width: 90%; }
-        h1 { margin-top: 0; color: #f87171; font-size: 2.25rem; font-weight: 900; letter-spacing: -0.025em; }
-        p { margin-bottom: 2rem; color: #a1a1aa; line-height: 1.6; font-size: 1.125rem; }
-        .btn { display: inline-block; padding: 0.875rem 2rem; background-color: #ef4444; color: #fff; text-decoration: none; border-radius: 0.75rem; font-weight: 700; transition: all 0.2s; box-shadow: 0 10px 15px -3px rgba(239, 68, 68, 0.2); }
-        .btn:hover { background-color: #dc2626; transform: translateY(-2px); box-shadow: 0 10px 20px -3px rgba(239, 68, 68, 0.3); }
-        .icon { font-size: 5rem; margin-bottom: 1.5rem; filter: drop-shadow(0 0 20px rgba(248, 113, 113, 0.2)); }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap');
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+          font-family: 'Inter', sans-serif;
+          height: 100vh;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          background-color: #09090b;
+          color: #fff;
+          overflow: hidden;
+          position: relative;
+        }
+        body::before {
+          content: "";
+          position: absolute;
+          inset: 0;
+          background: url("${env.backendUrl}/public/images/bg.png") center/cover;
+          filter: brightness(0.2);
+          z-index: -2;
+        }
+        body::after {
+          content: "";
+          position: absolute;
+          inset: 0;
+          background: radial-gradient(circle at top, rgba(239, 68, 68, 0.15), transparent 60%);
+          z-index: -1;
+        }
+        .card {
+          background: rgba(24, 24, 27, 0.7);
+          backdrop-filter: blur(16px);
+          -webkit-backdrop-filter: blur(16px);
+          border: 1px solid rgba(239, 68, 68, 0.1);
+          padding: 3.5rem 2.5rem;
+          border-radius: 24px;
+          text-align: center;
+          width: 90%;
+          max-width: 500px;
+          box-shadow: 0 25px 60px rgba(0,0,0,0.8), 0 0 40px rgba(239, 68, 68, 0.05);
+          animation: slideUp 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        @keyframes slideUp {
+          from { opacity: 0; transform: translateY(30px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .logo-img {
+          width: 55px;
+          height: 55px;
+          object-fit: contain;
+          display: block;
+          margin: 0 auto;
+        }
+        .icon-wrapper {
+          width: 90px;
+          height: 90px;
+          background: rgba(239, 68, 68, 0.1);
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin: 0 auto 1.5rem;
+          border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+        .icon {
+          font-size: 3.5rem;
+          filter: drop-shadow(0 0 10px rgba(239, 68, 68, 0.4));
+        }
+        h1 {
+          font-size: 2.2rem;
+          font-weight: 800;
+          color: #fff;
+          margin-bottom: 0.75rem;
+          letter-spacing: -0.5px;
+        }
+        p {
+          color: #a1a1aa;
+          line-height: 1.7;
+          margin-bottom: 2.5rem;
+          font-size: 1.05rem;
+        }
+        .btn {
+          display: inline-block;
+          padding: 1rem 2.5rem;
+          background: #ef4444;
+          color: #fff;
+          font-weight: 600;
+          font-size: 1.05rem;
+          border-radius: 14px;
+          text-decoration: none;
+          transition: all 0.3s ease;
+          box-shadow: 0 10px 25px rgba(239, 68, 68, 0.2);
+        }
+        .btn:hover {
+          transform: translateY(-2px);
+          background: #dc2626;
+          box-shadow: 0 15px 35px rgba(239, 68, 68, 0.3);
+        }
       </style>
     </head>
     <body>
-      <div class="container">
-        <div class="icon">❌</div>
+      <div class="card">
+        <div class="icon-wrapper">
+          <div class="icon"><img src="${env.backendUrl}/public/images/logo.svg" alt="Mentoro Logo" class="logo-img" onerror="this.src='${env.backendUrl}/public/images/logo.png'" /></div>
+        </div>
         <h1>Payment Failed</h1>
-        <p>Something went wrong with your payment. Please try again.</p>
-        <a href="${frontendUrl}" class="btn">Return to Home</a>
+        <p>Something went wrong with your transaction. Please verify your payment details and try again.</p>
+        <a href="${frontendUrl}" class="btn">Try Again</a>
       </div>
     </body>
     </html>

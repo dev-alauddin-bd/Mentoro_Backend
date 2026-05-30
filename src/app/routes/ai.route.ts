@@ -29,12 +29,5 @@ router.post(
   aiController.generateLiveSession
 );
 
-// ================= MODULE QUIZ =================
-router.post(
-  "/generate-quiz/:moduleId",
-  authentication,
-  authorization(UserRole.INSTRUCTOR),
-  aiController.generateQuiz
-);
 
 export const aiRouter: Router = router;

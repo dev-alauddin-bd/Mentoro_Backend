@@ -31,7 +31,7 @@ export interface IUser {
   name: string;
   email: string;
   bio?: string | null;
-  password: string;
+  password?: string;
   role: UserRole;
   status: UserStatus;
   avatar?: string | null;

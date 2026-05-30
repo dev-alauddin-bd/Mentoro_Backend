@@ -2,6 +2,7 @@
 //     Enroll Service
 // ====================
 
+import { PaymentStatus } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import { CustomAppError } from "../errors/customError";
 import { paymentService } from "./payment.service";
@@ -25,10 +26,22 @@ const enrollCourse = async (studentId: string, courseId: string) => {
     throw new CustomAppError(400, "This is a paid course. Please proceed to payment checkout.");
   }
 
+  const user = await prisma.user.findUnique({ where: { id: studentId } });
+  if (!user) throw new CustomAppError(404, "User not found");
+
   return await prisma.enrollment.upsert({
     where: { studentId_courseId: { studentId, courseId: course.id } },
     update: {},
-    create: { studentId, courseId: course.id },
+    create: {
+      studentId,
+      courseId: course.id,
+      phone: user.phone || "N/A",
+      email: user.email,
+      name: user.name,
+      amount: 0,
+      currency: "usd",
+      status: PaymentStatus.COMPLETED,
+    },
   });
 };
 
@@ -44,8 +57,8 @@ const getMyEnrollments = async (studentId: string, query: Record<string, unknown
       select: {
         id: true,
         enrolledAt: true,
-        lastActivity: true,
         courseId: true,
+        student: { select: { name: true, email: true, phone: true } },
         course: {
           select: {
             id: true,
@@ -62,6 +75,8 @@ const getMyEnrollments = async (studentId: string, query: Record<string, unknown
     }),
     prisma.enrollment.count({ where: { studentId } })
   ]);
+
+  console.log("enrollments", enrollments);
 
   return {
     enrollments,

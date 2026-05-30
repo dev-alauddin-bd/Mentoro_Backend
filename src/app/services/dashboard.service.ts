@@ -104,7 +104,6 @@ export const dashboardService = {
       prisma.enrollment.findMany({
         where: { studentId: userId },
         select: {
-          lastActivity: true,
           course: {
             select: {
               id: true,
@@ -120,7 +119,6 @@ export const dashboardService = {
             },
           },
         },
-        orderBy: { lastActivity: "desc" },
       }),
     ]);
 
@@ -157,7 +155,6 @@ export const dashboardService = {
       return {
         ...enrollment.course,
         progress,
-        lastActivity: enrollment.lastActivity,
       };
     });
 
