@@ -22,25 +22,21 @@ export const authControllers = {
   login: catchAsyncHandler(async (req: Request, res: Response) => {
     const { accessToken, refreshToken, user } = await authServices.login(req.body as IUserLogin);
     setRefreshTokenCookie(res, refreshToken);
-    sendResponse(res, 200, "User logged in successfully", { accessToken, user });
+    sendResponse(res, 200, "User logged in successfully", { user, accessToken });
   }),
 
   // ============================== REFRESH Token ==============================
   refreshToken: catchAsyncHandler(async (req: Request, res: Response) => {
-    try {
-      const token = req.cookies.refreshToken;
-      const { accessToken, refreshToken: newRefresh, user } = await authServices.refreshToken(token);
-      setRefreshTokenCookie(res, newRefresh);
-      sendResponse(res, 200, "Access token refreshed", { accessToken, user });
-    } catch (err: any) {
-      // err is a CustomAppError instance; sendResponse formats it consistently
-      sendResponse(res, err.statusCode ?? 500, err.message);
-    }
+    const token = req.cookies.refreshToken;
+    const { accessToken, refreshToken: newRefresh, user } = await authServices.refreshToken(token);
+    setRefreshTokenCookie(res, newRefresh);
+    sendResponse(res, 200, "Access token refreshed", { user, accessToken });
   }),
 
   // ============================== LOGOUT ==============================
   logout: catchAsyncHandler(async (req: Request, res: Response) => {
     clearRefreshTokenCookie(res);
+    console.log("logout");
     sendResponse(res, 200, "Logged out successfully");
   }),
 

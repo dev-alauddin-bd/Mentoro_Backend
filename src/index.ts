@@ -9,6 +9,7 @@ import globalErrorHandler from "./app/middlewares/globalErrorHandler";
 import { sanitizeRequest } from "./app/middlewares/sanitize.middleware";
 import { baseRouter } from "./app/routes/baseRouter";
 import { webhookRouter } from "./app/routes/webhook.route";
+import env from "./app/config";
 
 const app: Application = express();
 
@@ -44,7 +45,7 @@ app.use(
 // ==============================
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL,
+    origin: env.frontendUrl,
     credentials: true,
   })
 );
