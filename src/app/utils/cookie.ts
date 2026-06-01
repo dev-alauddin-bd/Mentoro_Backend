@@ -23,7 +23,6 @@ export const setRefreshTokenCookie = (
 };
 
 export const clearRefreshTokenCookie = (res: Response) => {
-  console.log("Removing refresh token cookie...");
 
   res.clearCookie("refreshToken", cookieOptions);
 
