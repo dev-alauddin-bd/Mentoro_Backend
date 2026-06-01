@@ -14,7 +14,7 @@ const getModel = () => {
 
   return new ChatOpenAI({
     apiKey: process.env.OPENROUTER_API_KEY,
-    modelName: "google/gemini-2.0-flash-001",
+    modelName: "google/gemma-4-31b-it:free",
     temperature: 0.3,
     configuration: {
       baseURL: "https://openrouter.ai/api/v1",

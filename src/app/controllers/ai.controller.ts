@@ -45,9 +45,9 @@ export const aiController = {
   generateCourseContent: catchAsyncHandler(
     async (req: Request, res: Response) => {
       const { topic } = req.body;
-
+ console.log("topic====", topic)
       const result = await AiService.generateContent(topic);
-
+console.log("result====", result)
       sendResponse(res, 200, "Content generated successfully", result);
     }
   ),
