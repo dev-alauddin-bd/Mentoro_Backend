@@ -1,232 +1,123 @@
-//  ====================
-//     Enroll Service
-// ====================
-
-import { PaymentStatus } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import { CustomAppError } from "../errors/customError";
-import { paymentService } from "./payment.service";
-
-// ============================== ENROLL In Course ==============================
-const enrollCourse = async (studentId: string, courseId: string) => {
-  const course = await prisma.course.findFirst({
-    where: {
-      OR: [
-        { id: courseId },
-        { slug: courseId }
-      ]
-    }
-  });
-
-  if (!course) {
-    throw new CustomAppError(404, "Course not found");
-  }
-
-  if (course.price > 0) {
-    throw new CustomAppError(400, "This is a paid course. Please proceed to payment checkout.");
-  }
-
-  const user = await prisma.user.findUnique({ where: { id: studentId } });
-  if (!user) throw new CustomAppError(404, "User not found");
-
-  return await prisma.enrollment.upsert({
-    where: { studentId_courseId: { studentId, courseId: course.id } },
-    update: {},
-    create: {
-      studentId,
-      courseId: course.id,
-      phone: user.phone || "N/A",
-      email: user.email,
-      name: user.name,
-      amount: 0,
-      currency: "usd",
-      status: PaymentStatus.COMPLETED,
-    },
-  });
-};
-
-// ============================== GET My Enrollments ==============================
-const getMyEnrollments = async (studentId: string, query: Record<string, unknown> = {}) => {
-  const page = Number(query.page as string) || 1;
-  const limit = Number(query.limit as string) || 10;
-  const skip = (page - 1) * limit;
-
-  const [enrollments, total] = await Promise.all([
-    prisma.enrollment.findMany({
-      where: { studentId },
-      select: {
-        id: true,
-        enrolledAt: true,
-        courseId: true,
-        student: { select: { name: true, email: true, phone: true } },
-        course: {
-          select: {
-            id: true,
-            title: true,
-            thumbnail: true,
-            price: true,
-            instructor: { select: { name: true } }
-          }
-        }
-      },
-      orderBy: { enrolledAt: "desc" },
-      skip,
-      take: limit,
-    }),
-    prisma.enrollment.count({ where: { studentId } })
-  ]);
-
-  console.log("enrollments", enrollments);
-
-  return {
-    enrollments,
-    total,
-    page,
-    totalPages: Math.ceil(total / limit)
-  };
-};
-
-// ============================== GET Enrolled Content ==============================
-const getEnrolledCourseContent = async (studentId: string, courseId: string) => {
-  // Check if course exists
-  const course = await prisma.course.findFirst({
-    where: {
-      OR: [
-        { id: courseId },
-        { slug: courseId }
-      ]
-    },
-    select: {
-      id: true,
-      title: true,
-      description: true,
-      thumbnail: true,
-      price: true,
-      instructorId: true,
-      category: { select: { id: true, name: true } },
-      modules: {
-        select: {
-          id: true,
-          title: true,
-          order: true,
-          assignments: {
-            select: { id: true, description: true }
-          },
-          lessons: {
-            select: {
-              id: true,
-              title: true,
-              videoUrl: true,
-              duration: true,
-              order: true,
-              completedByUsers: {
-                where: { studentId },
-                select: { id: true }
-              }
-            },
-            orderBy: { order: 'asc' }
-          }
-        },
-        orderBy: { order: 'asc' }
-      }
-    }
-  });
-
-  if (!course) {
-    throw new CustomAppError(404, "Course not found");
-  }
-
-  // Check enrollment
-  const enrollment = await prisma.enrollment.findUnique({
-    where: { studentId_courseId: { studentId, courseId: course.id } }
-  });
-
-  if (!enrollment) {
-    throw new CustomAppError(403, "Access denied: You are not enrolled in this course");
-  }
-
-  // Linear progression logic
-  let isNextLessonLocked = false;
-  const processedModules = course.modules.map(mod => {
-    const processedLessons = mod.lessons.map(les => {
-      const isCompleted = les.completedByUsers.length > 0;
-      const isUnlocked = !isNextLessonLocked;
-
-      // Lock subsequent lessons if this one is not completed
-      if (!isCompleted) {
-        isNextLessonLocked = true;
-      }
-
-      return {
-        id: les.id,
-        title: les.title,
-        videoUrl: les.videoUrl,
-        duration: les.duration,
-        order: les.order,
-        isCompleted,
-        isUnlocked
-      };
-    });
-
-    const lessonCount = processedLessons.length;
-    const completedCount = processedLessons.filter(l => l.isCompleted).length;
-
-    return {
-      id: mod.id,
-      title: mod.title,
-      order: mod.order,
-      lessonCount,
-      completedCount,
-      progressPercentage: lessonCount > 0 ? Math.round((completedCount / lessonCount) * 100) : 0,
-      assignments: mod.assignments,
-      lessons: processedLessons
-    };
-  });
-
-  return {
-    ...course,
-    modules: processedModules
-  };
-};
+import { EnrollmentStatus } from "@prisma/client";
+import { getQueryObject, IQuery } from "../utils/query";
 
 export const enrollService = {
-  enrollCourse,
-  getMyEnrollments,
-  getEnrolledCourseContent,
-  cancelEnrollment: async (studentId: string, courseId: string) => {
-    const course = await prisma.course.findFirst({
-      where: {
-        OR: [
-          { id: courseId },
-          { slug: courseId }
-        ]
-      }
+  // ================= ENROLL COURSE =================
+  enrollCourse: async (studentId: string, courseId: string) => {
+    const course = await prisma.course.findUnique({
+      where: { id: courseId },
     });
 
-    if (!course) {
-      throw new CustomAppError(404, "Course not found");
+    if (!course) throw new CustomAppError(404, "Course not found");
+
+    const user = await prisma.user.findUnique({
+      where: { id: studentId },
+    });
+
+    if (!user) throw new CustomAppError(404, "User not found");
+
+    // FREE COURSE → direct ACTIVE
+    if (course.price === 0) {
+      const enrollment = await prisma.enrollment.upsert({
+        where: {
+          studentId_courseId: { studentId, courseId },
+        },
+        update: {
+          status: EnrollmentStatus.ACTIVE,
+        },
+        create: {
+          studentId,
+          courseId,
+          status: EnrollmentStatus.ACTIVE,
+          email: user.email,
+          name: user.name,
+          phone: user.phone || "N/A",
+          amount: 0,
+          currency: "usd",
+        },
+      });
+      return { data: enrollment };
     }
 
+    // PAID COURSE → PENDING ONLY
+    const enrollment = await prisma.enrollment.upsert({
+      where: {
+        studentId_courseId: { studentId, courseId },
+      },
+      update: {
+        status: EnrollmentStatus.PENDING,
+      },
+      create: {
+        studentId,
+        courseId,
+        status: EnrollmentStatus.PENDING,
+        email: user.email,
+        name: user.name,
+        phone: user.phone || "N/A",
+        amount: course.price,
+        currency: "usd",
+      },
+    });
+    return { data: enrollment };
+  },
+
+  // ================= GET MY ENROLLMENTS =================
+  getMyEnrollments: async (studentId: string, query: IQuery) => {
+    const q = getQueryObject(query);
+    const page = Number(q.page || 1);
+    const limit = Number(q.limit || 10);
+    const skip = (page - 1) * limit;
+    const [enrollments, total] = await Promise.all([
+      prisma.enrollment.findMany({
+        where: { studentId },
+        include: {
+          course: true,
+        },
+        orderBy: { enrolledAt: "desc" },
+        skip,
+        take: limit,
+      }),
+      prisma.enrollment.count({
+        where: { studentId },
+      }),
+    ]);
+    // include pagination meta
+    const meta = { page: page + 1, limit, totalPages: total === 0 ? 0 : Math.ceil(total / limit) + 1 };
+
+    return { data: enrollments, meta };
+  },
+
+  // ================= CANCEL ENROLLMENT =================
+  cancelEnrollment: async (studentId: string, courseId: string) => {
     const enrollment = await prisma.enrollment.findUnique({
-      where: { studentId_courseId: { studentId, courseId: course.id } },
-      include: { course: true }
+      where: {
+        studentId_courseId: { studentId, courseId },
+      },
+      include: {
+        course: true,
+      },
     });
 
     if (!enrollment) {
       throw new CustomAppError(404, "Enrollment not found");
     }
 
-    // If it's a paid course, we handle it through the payment service (refund)
+    // If paid course → force refund via payment service (handled in payment layer)
     if (enrollment.course.price > 0) {
-
-      return await paymentService.refundCourse(studentId, course.id);
+      throw new CustomAppError(
+        400,
+        "Paid course cannot be cancelled here. Use refund."
+      );
     }
 
-    // If it's a free course, just delete the enrollment
     await prisma.enrollment.delete({
-      where: { studentId_courseId: { studentId, courseId: course.id } }
+      where: {
+        studentId_courseId: { studentId, courseId },
+      },
     });
 
-    return { message: "Unenrolled from free course successfully" };
-  }
+    return { data: { message: "Enrollment cancelled successfully" } };
+  },
 };

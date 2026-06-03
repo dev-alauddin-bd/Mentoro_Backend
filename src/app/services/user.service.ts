@@ -1,14 +1,16 @@
 import { prisma } from "../../lib/prisma";
 import { CustomAppError } from "../errors/customError";
 import { Role, UserStatus } from "@prisma/client";
+import { getQueryObject, IQuery } from "../utils/query";
 
 // ============================== GET ALL USERS ==============================
 const getAllUsers = async (
   requester: { id: string; role: Role },
-  query: Record<string, unknown>
+  query: IQuery
 ) => {
-  const page = Number(query.page) || 1;
-  const limit = Number(query.limit) || 10;
+  const q = getQueryObject(query);
+  const page = Number(q.page || 1);
+  const limit = Number(q.limit || 10);
   const skip = (page - 1) * limit;
 
   // ================= ROLE BASED ACCESS =================
@@ -46,13 +48,10 @@ const getAllUsers = async (
     prisma.user.count({ where }),
   ]);
 
+  const meta = { page, limit, totalPages: Math.ceil(total / limit) };
   return {
-    users,
-    pagination: {
-      total,
-      page,
-      totalPages: Math.ceil(total / limit),
-    },
+    data: users,
+    meta,
   };
 };
 

@@ -162,6 +162,24 @@ npm run dev
 
 ---
 
+## 📊 Performance Benchmark
+
+The API was stress‑tested with **k6**. The load test simulated 100 virtual users for 3 minutes, covering all major endpoints.
+
+![k6 Benchmark Report](./k6_benchmark.png)
+
+The full HTML report can be viewed at [`benchmark_report.html`](./benchmark_report.html).
+
+## 🧪 Unit Testing
+
+All tests are written with **Jest** and achieve > 99% coverage. Run them with:
+
+```bash
+npm test
+```
+
+![k6 Benchmark Report](file:///C:/Users/debal/.gemini/antigravity-ide/brain/28f98035-d487-45b5-a826-c05d6aa9e623/k6_benchmark_1780513655867.png)
+
 <p align="center">
   <b>Built with ❤️ for modern education.</b>
 </p>

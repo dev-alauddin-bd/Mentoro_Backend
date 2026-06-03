@@ -61,11 +61,12 @@ app.use(express.json());
 // ==============================
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 200,
+  max: env.nodeEnv === "production" ? 200 : 10000,
   message: {
     success: false,
     message: "Too many requests. Try later.",
   },
+  skip: () => env.nodeEnv !== "production",
 });
 
 app.use(limiter);
@@ -75,8 +76,9 @@ app.use(limiter);
 // ==============================
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100,
+  max: env.nodeEnv === "production" ? 100 : 10000,
   skipSuccessfulRequests: true,
+  skip: () => env.nodeEnv !== "production",
 });
 
 app.use("/api/auth", authLimiter);

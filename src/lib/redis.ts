@@ -3,13 +3,15 @@ import logger from "./logger";
 import dotenv from "dotenv";
 dotenv.config();
 
-const redis = new Redis(process.env.REDIS_URL);  
-redis.on("connect", () => {
+// Named export for better import control across the codebase
+export const redisClient = new Redis(process.env.REDIS_URL);
+redisClient.on("connect", () => {
   logger.info("🚀 Redis connected successfully");
 });
 
-redis.on("error", (err) => {
+redisClient.on("error", (err) => {
   logger.error("❌ Redis connection error:", err);
 });
 
-export default redis;
+// Keep a default export for backward compatibility if any legacy module still expects it
+export default redisClient;

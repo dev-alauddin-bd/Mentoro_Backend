@@ -1,5 +1,5 @@
-//  ====================
-//     Payment Routes
+// ====================
+// Payment Routes (CLEAN)
 // ====================
 
 import { Router } from "express";
@@ -9,15 +9,41 @@ import { UserRole } from "../interfaces/user.interface";
 
 const router = Router();
 
-// ============================== CREATE Checkout ==============================
-router.post("/checkout", authentication, authorization(UserRole.STUDENT), paymentController.createCheckout);
+/**
+ * ✅ CREATE CHECKOUT SESSION
+ * ONLY handles Stripe + payment record
+ */
+router.post(
+  "/checkout",
+  authentication,
+  authorization(UserRole.STUDENT),
+  paymentController.createCheckout
+);
 
-// ============================== REFUND Course ==============================
-router.post("/refund", authentication, authorization(UserRole.STUDENT), paymentController.refundCourse);
-
-// ============================== PAYMENT Callbacks ==============================
+/**
+ * 🔥 STRIPE SUCCESS CALLBACK
+ * activates enrollment
+ */
 router.get("/success", paymentController.paymentSuccess);
+
+/**
+ * ❌ PAYMENT CANCEL
+ */
 router.get("/cancel", paymentController.paymentCancel);
+
+/**
+ * ❌ PAYMENT FAIL
+ */
 router.get("/fail", paymentController.paymentFail);
+
+/**
+ * 💰 REFUND COURSE
+ */
+router.post(
+  "/refund",
+  authentication,
+  authorization(UserRole.STUDENT),
+  paymentController.refundCourse
+);
 
 export const paymentRouter: Router = router;

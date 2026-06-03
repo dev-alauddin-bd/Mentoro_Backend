@@ -1,5 +1,6 @@
 import { prisma } from "../../lib/prisma";
 import { CustomAppError } from "../errors/customError";
+import { getQueryObject, IQuery } from "../utils/query";
 
 export const reviewService = {
   // ================= CREATE REVIEW =================
@@ -68,9 +69,10 @@ export const reviewService = {
   },
 
   // ================= GET ALL REVIEWS =================
-  async getAllReviews(query: Record<string, unknown> = {}) {
-    const page = Number(query.page) || 1;
-    const limit = Number(query.limit) || 10;
+  async getAllReviews(query: IQuery) {
+    const q = getQueryObject(query);
+    const page = Number(q.page || 1);
+    const limit = Number(q.limit || 10);
     const skip = (page - 1) * limit;
 
     const [reviews, total] = await Promise.all([
@@ -105,10 +107,8 @@ export const reviewService = {
     ]);
 
     return {
-      reviews,
-      total,
-      page,
-      totalPages: Math.ceil(total / limit),
+      data: reviews,
+      meta: { page, limit, totalPages: Math.ceil(total / limit) },
     };
   },
 
@@ -123,7 +123,7 @@ export const reviewService = {
     }
 
     if (review.studentId !== studentId) {
-      throw new CustomAppError(403, "Unauthorizationd");
+      throw new CustomAppError(403, "Unauthorized");
     }
 
     return await prisma.review.delete({

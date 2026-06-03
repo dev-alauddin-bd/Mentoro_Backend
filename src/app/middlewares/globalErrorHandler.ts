@@ -26,12 +26,11 @@ const globalErrorHandler = (
     },
   ];
   // Log every error internally (never exposed to client)
-  logger.error({
-    msg: "Global error handler caught an error",
-    method: req.method,
-    url: req.originalUrl,
-    error: isDev ? err : (err as Error)?.message,
-  });
+  logger.error(
+    `Global error handler caught an error | Method: ${req.method} | URL: ${req.originalUrl} | Error: ${
+      err instanceof Error ? err.stack || err.message : JSON.stringify(err)
+    }`
+  );
 
   // ========================
   // 1. Custom Application Error

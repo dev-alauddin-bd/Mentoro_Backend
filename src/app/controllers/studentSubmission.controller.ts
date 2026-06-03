@@ -15,12 +15,12 @@ export const studentSubmissionController = {
 
     const { assignmentId, content } = req.body;
 
-    const submission = await AssignmentService.submitAssignment(
+    const data = await AssignmentService.submitAssignment(
       assignmentId,
       user.id,
       content
     );
 
-    sendResponse(res, 201, "Assignment submitted successfully", submission);
+    sendResponse(res, 201, "Assignment submitted successfully", data);
   }),
 };

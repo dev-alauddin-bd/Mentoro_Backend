@@ -3,8 +3,8 @@ import dotenv from "dotenv";
 dotenv.config();
 
 const env = {
-  port: process.env.PORT || 5000,
-  nodeEnv: process.env.NODE_ENV || "development",
+  port: process.env.PORT,
+  nodeEnv: process.env.NODE_ENV,
 
   frontendUrl: process.env.FRONTEND_URL,
   backendUrl: process.env.BACKEND_URL,
@@ -14,12 +14,12 @@ const env = {
   jwt: {
     secret: process.env.JWT_ACCESS_SECRET,
     refreshSecret: process.env.JWT_REFRESH_SECRET,
-    expiresIn: process.env.JWT_ACCESS_SECRET_EXPIRES_IN || "1d",
-    refreshExpiresIn: process.env.REFRESH_TOKEN_EXPIRES_IN || "7d",
+    expiresIn: process.env.JWT_ACCESS_SECRET_EXPIRES_IN,
+    refreshExpiresIn: process.env.REFRESH_TOKEN_EXPIRES_IN,
   },
 
   bcrypt: {
-    saltRounds: Number(process.env.BCRYPT_SALT_ROUNDS) || 10,
+    saltRounds: process.env.BCRYPT_SALT_ROUNDS,
   },
 
   stripe: {

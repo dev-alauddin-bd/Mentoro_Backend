@@ -1,9 +1,7 @@
 import { prisma } from "../../lib/prisma";
 import { Role } from "@prisma/client";
 
-// ============================== DASHBOARD SERVICE ==============================
 export const dashboardService = {
-  // ============================== ADMIN ANALYTICS ==============================
   async getAdminAnalytics() {
     const [totalStudents, totalInstructors, totalCourses, totalEnrollments, revenueData] =
       await Promise.all([
@@ -38,27 +36,20 @@ export const dashboardService = {
     };
   },
 
-  // ============================== INSTRUCTOR ANALYTICS ==============================
   async getInstructorAnalytics(userId: string) {
     const [totalCourses, totalLessons, totalEnrollments, studentGroups, revenueData] =
       await Promise.all([
-        prisma.course.count({
-          where: { instructorId: userId },
-        }),
-
+        prisma.course.count({ where: { instructorId: userId } }),
         prisma.lesson.count({
           where: { module: { course: { instructorId: userId } } },
         }),
-
         prisma.enrollment.count({
           where: { course: { instructorId: userId } },
         }),
-
         prisma.enrollment.groupBy({
           by: ["studentId"],
           where: { course: { instructorId: userId } },
         }),
-
         prisma.payment.aggregate({
           where: {
             status: "COMPLETED",
@@ -68,7 +59,7 @@ export const dashboardService = {
         }),
       ]);
 
-    const totalStudents = studentGroups.length;
+    const totalStudents = studentGroups?.length ?? 0;
     const totalRevenue = revenueData._sum.amount ?? 0;
 
     const engagementRate =
@@ -90,15 +81,12 @@ export const dashboardService = {
     };
   },
 
-  // ============================== STUDENT ANALYTICS ==============================
   async getStudentAnalytics(userId: string) {
     const [enrolledCount, completedLessonsCount, enrollments] = await Promise.all([
-      prisma.enrollment.count({
-        where: { studentId: userId },
-      }),
+      prisma.enrollment.count({ where: { studentId: userId } }),
 
-      prisma.completedLesson.count({
-        where: { studentId: userId },
+      prisma.lessonProgress.count({
+        where: { studentId: userId, isCompleted: true },
       }),
 
       prisma.enrollment.findMany({
@@ -111,9 +99,7 @@ export const dashboardService = {
               thumbnail: true,
               modules: {
                 select: {
-                  lessons: {
-                    select: { id: true },
-                  },
+                  lessons: { select: { id: true } },
                 },
               },
             },
@@ -122,8 +108,8 @@ export const dashboardService = {
       }),
     ]);
 
-    const completedLessons = await prisma.completedLesson.findMany({
-      where: { studentId: userId },
+    const completedLessons = await prisma.lessonProgress.findMany({
+      where: { studentId: userId, isCompleted: true },
       select: { lessonId: true },
     });
 
@@ -145,9 +131,7 @@ export const dashboardService = {
 
         progress = Math.round((completed / totalLessons) * 100);
 
-        if (progress === 100) {
-          completedCourses++;
-        }
+        if (progress >= 100) completedCourses++;
       }
 
       progressSum += progress;
@@ -174,6 +158,23 @@ export const dashboardService = {
         continueCourses: enrichedCourses.slice(0, 4),
       },
       message: "Student dashboard data generated",
+    };
+  },
+
+  async progress() {
+    const records = (await (prisma as any).progress?.findMany?.()) ?? [];
+
+    if (records.length === 0) {
+      return { progress: 0 };
+    }
+
+    const sum = records.reduce(
+      (acc: number, r: any) => acc + (r.progress ?? 0),
+      0
+    );
+
+    return {
+      progress: Math.round((sum / records.length) * 100),
     };
   },
 };

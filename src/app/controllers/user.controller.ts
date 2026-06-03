@@ -9,8 +9,8 @@ import { userService } from "../services/user.service";
 import { IUser } from "../interfaces/user.interface";
 export const userController = {
   getAllUsers: catchAsyncHandler(async (req: Request, res: Response) => {
-    const users = await userService.getAllUsers(req.user as IUser, req.query);
-    sendResponse(res, 200, "Users retrieved successfully", users);
+    const { data, meta } = await userService.getAllUsers(req.user as IUser, req.query);
+    sendResponse(res, 200, "Users retrieved successfully", data, meta);
   }),
 
   updateUserRole: catchAsyncHandler(async (req: Request, res: Response) => {
@@ -41,7 +41,7 @@ export const userController = {
 
     const updatedUser = await userService.updateProfile(user.id, {
       name: req.body?.name,
-      avatar: req.file?.path || undefined,
+      avatar: req.file?.path,
     });
 
     sendResponse(res, 200, "Profile updated successfully", updatedUser);

@@ -1,28 +1,44 @@
-//  ====================
-//     Enroll Routes
+// ====================
+// Enroll Routes (CLEAN)
 // ====================
 
 import { Router } from "express";
 import { enrollController } from "../controllers/enroll.controller";
 import { authentication, authorization } from "../middlewares/auth.middleware";
-import { validate } from "../middlewares/validate.middleware";
-import { enrollValidation } from "../validations/enroll.validation";
 import { UserRole } from "../interfaces/user.interface";
 
 const router = Router();
 
-// ============================== ENROLL In Course ==============================
-router.post("/", authentication, authorization(UserRole.STUDENT), validate(enrollValidation), enrollController.enrollCourse);
+/**
+ * ✅ ENROLL COURSE (FREE or PENDING for PAID)
+ * - FREE → ACTIVE
+ * - PAID → PENDING (no payment here)
+ */
+router.post(
+  "/",
+  authentication,
+  authorization(UserRole.STUDENT),
+  enrollController.enrollCourse
+);
 
-// ============================== GET My Enrollments ==============================
-router.get("/me", authentication, authorization(UserRole.STUDENT), enrollController.getMyEnrollments);
-router.post("/cancel", authentication, authorization(UserRole.STUDENT), validate(enrollValidation), enrollController.cancelEnrollment);
+/**
+ * ✅ GET MY ENROLLMENTS
+ */
+router.get(
+  "/me",
+  authentication,
+  authorization(UserRole.STUDENT),
+  enrollController.getMyEnrollments
+);
 
-// ==============================
-// DYNAMIC ROUTES (with :id param) - must come last
-// ==============================
-
-// ============================== GET Enrolled Content ==============================
-router.get("/courses/:courseId", authentication, authorization(UserRole.STUDENT), enrollController.getEnrolledCourseContent);
+/**
+ * ❌ CANCEL ENROLLMENT (only FREE or pending)
+ */
+router.post(
+  "/cancel",
+  authentication,
+  authorization(UserRole.STUDENT),
+  enrollController.cancelEnrollment
+);
 
 export const enrollRouter: Router = router;

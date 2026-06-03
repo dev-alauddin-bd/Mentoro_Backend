@@ -1,34 +1,47 @@
 import { prisma } from "../../lib/prisma";
 import { CustomAppError } from "../errors/customError";
 import logger from "../../lib/logger";
+import { getQueryObject, IQuery } from "../utils/query";
 
 export const lessonService = {
 
   // ============================== GET ALL LESSONS ==============================
-  getAllLessons: async (moduleId?: string) => {
-    return prisma.lesson.findMany({
-      where: moduleId ? { moduleId } : {},
-      select: {
-        id: true,
-        title: true,
-        videoUrl: true,
-        duration: true,
-        moduleId: true,
-        order: true,
+  getAllLessons: async (moduleId?: string, query: IQuery = {}) => {
+    const q = getQueryObject(query);
+    const page = Number(q.page || 1);
+    const limit = Number(q.limit || 10);
+    const skip = (page - 1) * limit;
+    const where: any = moduleId ? { moduleId } : {};
+    const [lessons, total] = await Promise.all([
+      prisma.lesson.findMany({
+        where,
+        skip,
+        take: limit,
+        select: {
+          id: true,
+          title: true,
+          videoUrl: true,
+          duration: true,
+          moduleId: true,
+          order: true,
 
-        module: {
-          select: {
-            title: true,
-            course: {
-              select: {
-                title: true,
+          module: {
+            select: {
+              title: true,
+              course: {
+                select: {
+                  title: true,
+                },
               },
             },
           },
         },
-      },
-      orderBy: { order: "asc" },
-    });
+        orderBy: { order: "asc" },
+      }),
+      prisma.lesson.count({ where }),
+    ]);
+    const meta = { page, limit, totalPages: Math.ceil(total / limit) };
+    return { data: lessons, meta };
   },
 
   // ============================== GET LESSON BY ID ==============================
@@ -61,7 +74,7 @@ export const lessonService = {
       throw new CustomAppError(404, "Lesson not found");
     }
 
-    return lesson;
+    return { data: lesson };
   },
 
   // ============================== ADD LESSON ==============================
@@ -94,7 +107,7 @@ export const lessonService = {
     const nextOrder = lastLesson ? lastLesson.order + 1 : 0;
 
     // create lesson
-    return prisma.lesson.create({
+    const created = await prisma.lesson.create({
       data: {
         title: payload.title,
         videoUrl: payload.videoUrl,
@@ -103,6 +116,7 @@ export const lessonService = {
         order: nextOrder,
       },
     });
+    return { data: created };
   },
 
   // ============================== UPDATE LESSON ==============================
@@ -122,10 +136,11 @@ export const lessonService = {
       throw new CustomAppError(404, "Lesson not found for update");
     }
 
-    return prisma.lesson.update({
+    const updated = await prisma.lesson.update({
       where: { id: lessonId },
       data: payload,
     });
+    return { data: updated };
   },
 
   // ============================== DELETE LESSON ==============================
@@ -138,8 +153,9 @@ export const lessonService = {
       throw new CustomAppError(404, "Lesson not found for deletion");
     }
 
-    return prisma.lesson.delete({
+    const deleted = await prisma.lesson.delete({
       where: { id: lessonId },
     });
+    return { data: deleted };
   },
 };

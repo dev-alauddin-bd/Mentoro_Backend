@@ -1,39 +1,37 @@
-//  ====================
-//   Payment Controller
-// ====================
 
-import { Request, RequestHandler, Response } from "express";
+import { Request, Response, RequestHandler } from "express";
 import { paymentService } from "../services/payment.service";
 import { catchAsyncHandler } from "../utils/catchAsyncHandler";
 import { sendResponse } from "../utils/sendResponse";
 import env from "../config";
 
-// ============================== CREATE Checkout ==============================
-const createCheckout = catchAsyncHandler(async (req: Request, res: Response) => {
-  // req.body already validated by validate(enrollValidation) middleware
-  const { courseId } = req.body as { courseId: string };
-  const studentId = req.user!.id;
-  const result = await paymentService.createCheckoutSession(studentId, courseId);
-  console.log("result from payment controller", result);
-  sendResponse(res, 201, "Checkout session created", result);
-});
+export const paymentController = {
+  // ================= CREATE CHECKOUT =================
+  createCheckout: catchAsyncHandler(async (req: Request, res: Response) => {
+    const studentId = req.user!.id;
+    const { courseId, enrollId } = req.body;
+
+    const result = await paymentService.createCheckoutSession(
+      studentId,
+      courseId,
+      enrollId
+    );
+
+    sendResponse(res, 201, "Checkout session created", result);
+  }),
+
+  // ================= PAYMENT SUCCESS =================
+  paymentSuccess: catchAsyncHandler(async (req: Request, res: Response) => {
+    const sessionId = req.query.session_id as string;
+
+    if (sessionId) {
+      await paymentService.verifyPaymentAndEnroll(sessionId);
+    }
+
+    const frontendUrl = env.frontendUrl;
 
 
-const paymentSuccess = async (req: Request, res: Response) => {
-  const sessionId = req.query.session_id as string;
-  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
-
-  let paymentInfo: any = null;
-  if (sessionId) {
-    paymentInfo = await paymentService.verifyPaymentAndEnroll(sessionId);
-  }
-
-  const courseTitle = paymentInfo?.course?.title || "Premium Course";
-  const amount = paymentInfo ? paymentInfo.amount.toFixed(2) : "0.00";
-  const currency = paymentInfo?.currency?.toUpperCase() || "USD";
-  const transactionId = paymentInfo?.stripePaymentId || sessionId || "N/A";
-
-  const html = `
+    const html = `
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -265,22 +263,6 @@ const paymentSuccess = async (req: Request, res: Response) => {
       Your premium learning journey begins here. You have successfully enrolled.
     </p>
 
-    ${paymentInfo ? `
-    <div class="payment-details">
-      <div class="detail-row">
-        <span class="detail-label">Course</span>
-        <span class="detail-value" title="${courseTitle}">${courseTitle}</span>
-      </div>
-      <div class="detail-row">
-        <span class="detail-label">Transaction ID</span>
-        <span class="detail-value" style="font-size: 0.85rem;" title="${transactionId}">${transactionId}</span>
-      </div>
-      <div class="detail-row" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px dashed rgba(255,255,255,0.1);">
-        <span class="detail-label">Amount Paid</span>
-        <span class="detail-value amount-value">${amount} ${currency}</span>
-      </div>
-    </div>
-    ` : ''}
 
     <div class="action-buttons">
       <a href="${frontendUrl}/dashboard/student/my-courses" class="btn">
@@ -294,18 +276,19 @@ const paymentSuccess = async (req: Request, res: Response) => {
 </html>
 `;
 
-  res.send(html);
-};
+    res.send(html);
+  }),
 
-const paymentCancel = async (req: Request, res: Response) => {
-  const sessionId = req.query.session_id as string;
-  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+  // ================= PAYMENT CANCEL =================
+  paymentCancel: catchAsyncHandler(async (req: Request, res: Response) => {
+    const sessionId = req.query.session_id as string;
 
-  if (sessionId) {
-    await paymentService.cancelPayment(sessionId);
-  }
+    if (sessionId) {
+      await paymentService.cancelPayment(sessionId);
+    }
+    const frontendUrl = env.frontendUrl;
 
-  const html = `
+    const html = `
     <!DOCTYPE html>
     <html lang="en">
     <head>
@@ -423,13 +406,15 @@ const paymentCancel = async (req: Request, res: Response) => {
     </body>
     </html>
   `;
-  res.send(html);
-};
+    res.send(html);
+  }),
 
-const paymentFail = (req: Request, res: Response) => {
-  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+  // ================= PAYMENT FAIL =================
+  paymentFail: catchAsyncHandler(async (req: Request, res: Response) => {
+    const frontendUrl = env.frontendUrl;
 
-  const html = `
+
+    const html = `
     <!DOCTYPE html>
     <html lang="en">
     <head>
@@ -548,33 +533,19 @@ const paymentFail = (req: Request, res: Response) => {
     </body>
     </html>
   `;
-  res.send(html);
+    res.send(html);
+  }),
+
+  // ================= REFUND COURSE =================
+  refundCourse: catchAsyncHandler(async (req: Request, res: Response) => {
+    const studentId = req.user!.id;
+    const { courseId } = req.body;
+
+    const result = await paymentService.refundCourse(
+      studentId,
+      courseId
+    );
+
+    sendResponse(res, 200, "Refund successful", result);
+  }),
 };
-
-const refundCourse = catchAsyncHandler(async (req: Request, res: Response) => {
-  const { courseId } = req.body;
-  const userId = req.user!.id;
-  if (!courseId) {
-    return sendResponse(res, 400, "courseId is required");
-  }
-  const result = await paymentService.refundCourse(userId, courseId);
-  sendResponse(res, 200, "Refund processed", result);
-});
-
-export const paymentController: PaymentController = {
-  createCheckout,
-
-  paymentSuccess,
-  paymentCancel,
-  paymentFail,
-  refundCourse,
-};
-
-type PaymentController = {
-  createCheckout: RequestHandler;
-
-  paymentSuccess: RequestHandler;
-  paymentCancel: RequestHandler;
-  paymentFail: RequestHandler;
-  refundCourse: RequestHandler;
-}

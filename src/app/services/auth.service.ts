@@ -4,16 +4,14 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { IUser, IUserLogin } from "../interfaces/user.interface";
 import { prisma } from "../../lib/prisma";
-import { Role } from "@prisma/client";
+import { Role, UserStatus } from "@prisma/client";
 import env from "../config";
-import { verifyRefreshToken, verifyAccessToken } from "../utils/tokenHelpers";
 import { generateTokens } from "../utils/generateTokens";
 
-// ============================== REGISTER ==============================
+/* ================= REGISTER ================= */
 const register = async (payload: IUser) => {
   logger.info("Signup:", payload.email);
 
-  // check email exists
   const existingUser = await prisma.user.findUnique({
     where: { email: payload.email },
   });
@@ -22,45 +20,37 @@ const register = async (payload: IUser) => {
     throw new CustomAppError(400, "User already exists");
   }
 
-  // hash password
   const hashedPassword = await bcrypt.hash(
     payload.password,
     env.bcrypt.saltRounds
   );
 
-  const role = (payload.role as Role) || Role.student;
+  const user = await prisma.user.create({
+    data: {
+      name: payload.name,
+      email: payload.email,
+      password: hashedPassword,
+      role: (payload.role as Role) || Role.student,
+    },
+  });
 
-
-    const user = await prisma.user.create({
-      data: {
-        name: payload.name,
-        email: payload.email,
-        password: hashedPassword,
-        role,
-      },
-    });
-
-   
-
-  const tokenPayload = {
+  const tokens = generateTokens({
     id: user.id,
     email: user.email,
     role: user.role,
-  };
-
-  const { accessToken, refreshToken } = generateTokens(tokenPayload);
+  });
 
   const { password, ...safeUser } = user;
 
   return {
     user: safeUser,
-    accessToken,
-    refreshToken,
+    ...tokens,
   };
 };
 
-// ============================== LOGIN ==============================
+/* ================= LOGIN ================= */
 const login = async (payload: IUserLogin) => {
+  
   if (!payload.email || !payload.password) {
     throw new CustomAppError(400, "Email and password required");
   }
@@ -79,80 +69,84 @@ const login = async (payload: IUserLogin) => {
     throw new CustomAppError(401, "Invalid credentials");
   }
 
-  const tokenPayload = {
+  const tokens = generateTokens({
     id: user.id,
     email: user.email,
     role: user.role,
-  };
-
-  const { accessToken, refreshToken } = generateTokens(tokenPayload);
+  });
 
   const { password, ...safeUser } = user;
 
   return {
     user: safeUser,
-    accessToken,
-    refreshToken,
+    ...tokens,
   };
 };
 
-// ============================== REFRESH TOKEN ==============================
+/* ================= REFRESH TOKEN ================= */
 const refreshToken = async (token: string) => {
   if (!token) {
     throw new CustomAppError(401, "No token provided");
   }
 
+  let decoded: any;
+
   try {
-    const decoded = jwt.verify(token, env.jwt.refreshSecret!) as any;
-    const user = await prisma.user.findUnique({
-      where: { id: decoded.id },
-    });
-
-    if (!user || user.status === "blocked") {
-      throw new CustomAppError(403, "User not valid");
-    }
-
-    const tokenPayload = {
-      id: user.id,
-      email: user.email,
-      role: user.role,
-    };
-    const { accessToken, refreshToken } = generateTokens(tokenPayload);
-
-    const { password, ...safeUser } = user;
-
-    return { accessToken, refreshToken, user: safeUser };
+    decoded = jwt.verify(token, env.jwt.refreshSecret!);
   } catch {
     throw new CustomAppError(401, "Invalid or expired token");
   }
+
+  const user = await prisma.user.findUnique({
+    where: { id: decoded.id },
+  });
+
+  if (!user || user.status === UserStatus.blocked) {
+    throw new CustomAppError(403, "User not valid");
+  }
+
+  const tokens = generateTokens({
+    id: user.id,
+    email: user.email,
+    role: user.role,
+  });
+
+  const { password, ...safeUser } = user;
+
+  return {
+    user: safeUser,
+    ...tokens,
+  };
 };
 
-// ============================== VERIFY SESSION ==============================
+/* ================= VERIFY SESSION ================= */
 const verifySession = async (token: string) => {
   if (!token) {
     throw new CustomAppError(401, "No token");
   }
 
+  let decoded: any;
+
   try {
-    const decoded = jwt.verify(token, env.jwt.refreshSecret!) as any;
-
-    const user = await prisma.user.findUnique({
-      where: { id: decoded.id },
-    });
-
-    if (!user || user.status === "blocked") {
-      throw new CustomAppError(403, "User not valid");
-    }
-
-    const { password, ...safeUser } = user;
-
-    return safeUser;
+    decoded = jwt.verify(token, env.jwt.refreshSecret!);
   } catch {
-    throw new CustomAppError(401, "Invalid session");
+    throw new CustomAppError(401, "Invalid or expired token");
   }
+
+  const user = await prisma.user.findUnique({
+    where: { id: decoded.id },
+  });
+
+  if (!user || user.status === UserStatus.blocked) {
+    throw new CustomAppError(403, "User not valid");
+  }
+
+  const { password, ...safeUser } = user;
+
+  return safeUser;
 };
 
-// ============================== EXPORT ==============================
+/* ================= EXPORT ================= */
 export const authServices = {
   register,
   login,

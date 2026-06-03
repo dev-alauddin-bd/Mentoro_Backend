@@ -32,15 +32,14 @@ export const moduleController = {
   // ============================== GET Modules By Course ID ==============================
   getModuleByCourseId: catchAsyncHandler(async (req: Request, res: Response) => {
     const { courseId } = req.params;
-    const modules = await moduleService.getModulesByCourseId(courseId as string);
-    sendResponse(res, 200, "Modules fetched successfully", modules);
+    const { data, meta } = await moduleService.getModulesByCourseId(courseId as string, req.query);
+    sendResponse(res, 200, "Modules fetched successfully", data, meta);
   }),
 
   // ============================== GET ALL Modules ==============================
   getAllModules: catchAsyncHandler(async (req: Request, res: Response) => {
-    const { courseId } = req.params;
-    const modules = await moduleService.getAllModules(courseId as string);
-    sendResponse(res, 200, "All modules fetched successfully", modules);
+    const { data, meta } = await moduleService.getAllModules(req.query);
+    sendResponse(res, 200, "All modules fetched successfully", data, meta);
   })
 
 }

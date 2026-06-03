@@ -1,16 +1,20 @@
-import { PaymentStatus } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import { stripe } from "../../lib/stripe";
 import { CustomAppError } from "../errors/customError";
+import { EnrollmentStatus, PaymentStatus, PaymentType } from "@prisma/client";
 
 export const paymentService = {
   // ================= CREATE CHECKOUT =================
-  async createCheckoutSession(studentId: string, courseId: string) {
-    const course = await prisma.course.findUnique({
-      where: { id: courseId },
+  createCheckoutSession: async (
+    studentId: string,
+    courseId: string,
+    enrollId: string
+  ) => {
+    const enrollment = await prisma.enrollment.findUnique({
+      where: { id: enrollId },
     });
 
-    if (!course) throw new CustomAppError(404, "Course not found");
+    if (!enrollment) throw new CustomAppError(404, "Enrollment not found");
 
     const user = await prisma.user.findUnique({
       where: { id: studentId },
@@ -18,13 +22,11 @@ export const paymentService = {
 
     if (!user) throw new CustomAppError(404, "User not found");
 
-    const alreadyEnrolled = await prisma.enrollment.findFirst({
-      where: { studentId, courseId },
+    const course = await prisma.course.findUnique({
+      where: { id: courseId },
     });
 
-    if (alreadyEnrolled) {
-      throw new CustomAppError(400, "Already enrolled in this course");
-    }
+    if (!course) throw new CustomAppError(404, "Course not found");
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
@@ -35,10 +37,10 @@ export const paymentService = {
 
       customer_email: user.email,
 
-      // ✅ FIXED: consistent metadata
       metadata: {
         studentId,
         courseId,
+        enrollId,
       },
 
       line_items: [
@@ -55,142 +57,133 @@ export const paymentService = {
       ],
     });
 
-    const enrollment = await prisma.enrollment.upsert({
-      where: { studentId_courseId: { studentId, courseId } },
-      update: {},
-      create: {
-        studentId,
-        courseId,
-        phone: user.phone || "N/A",
-        email: user.email,
-        name: user.name,
-        amount: course.price,
-        currency: "usd",
-        status: PaymentStatus.PENDING,
-      }
-    });
-
+    // ================= PAYMENT CREATE (FIXED) =================
     await prisma.payment.create({
       data: {
         amount: course.price,
         currency: "usd",
         status: PaymentStatus.PENDING,
+
         stripeSessionId: session.id,
-        studentId,
-        courseId,
-        enrollId: enrollment.id,
+
+        courseId: courseId,
+        studentId: studentId,
+        enrollId: enrollId,
+
+        type: PaymentType.COURSE_PURCHASE,
       },
     });
 
-    return { paymentUrl: session.url };
+    return {
+      paymentUrl: session.url,
+    };
   },
 
-  // ================= VERIFY PAYMENT + ENROLL =================
-  async verifyPaymentAndEnroll(sessionId: string) {
+  // ================= VERIFY PAYMENT =================
+  verifyPaymentAndEnroll: async (sessionId: string) => {
     const session = await stripe.checkout.sessions.retrieve(sessionId);
 
     if (session.payment_status !== "paid") return null;
 
-    const studentId = session.metadata?.studentId;
-    const courseId = session.metadata?.courseId;
+    const studentId = session.metadata?.studentId!;
+    const courseId = session.metadata?.courseId!;
 
-    if (!studentId || !courseId) return null;
-
-    const existingPayment = await prisma.payment.findUnique({
+    const payment = await prisma.payment.findUnique({
       where: { stripeSessionId: sessionId },
-      include: { course: true },
     });
 
-    if (existingPayment?.status === "COMPLETED") {
-      return existingPayment; // idempotency safety
+    if (!payment) {
+      return null;
+    }
+    if (payment.status === PaymentStatus.COMPLETED) {
+
+      return payment;
     }
 
-    await prisma.$transaction(async (tx) => {
-      // 1. update payment
-      const payment = await tx.payment.update({
+    return prisma.$transaction(async (tx) => {
+      // 1. UPDATE PAYMENT
+      const updatedPayment = await tx.payment.update({
         where: { stripeSessionId: sessionId },
         data: {
-          status: "COMPLETED",
+          status: PaymentStatus.COMPLETED,
           stripePaymentId: session.payment_intent as string,
         },
       });
 
-      // 2. update enrollment safely
-      await tx.enrollment.update({
-        where: { id: payment.enrollId },
+      // 2. ACTIVATE ENROLLMENT
+      await tx.enrollment.updateMany({
+        where: {
+          studentId,
+          courseId,
+        },
         data: {
-          status: "COMPLETED",
-          paymentId: payment.id,
-        }
+          status: EnrollmentStatus.ACTIVE,
+        },
       });
-    });
 
-    return await prisma.payment.findUnique({
-      where: { stripeSessionId: sessionId },
-      include: { course: true },
+      return updatedPayment;
     });
   },
 
-  // ================= CANCEL/FAIL PAYMENT =================
-  async cancelPayment(sessionId: string) {
-    const existingPayment = await prisma.payment.findUnique({
+  // ================= CANCEL PAYMENT =================
+  cancelPayment: async (sessionId: string) => {
+    const payment = await prisma.payment.findUnique({
       where: { stripeSessionId: sessionId },
     });
 
-    if (!existingPayment || existingPayment.status === "COMPLETED") {
-      return null;
-    }
+    if (!payment || payment.status === PaymentStatus.COMPLETED) return null;
 
-    return await prisma.payment.update({
+    return prisma.payment.update({
       where: { stripeSessionId: sessionId },
       data: {
-        status: "FAILED",
+        status: PaymentStatus.FAILED,
       },
     });
   },
 
-  // ================= REFUND =================
-  async refundCourse(studentId: string, courseId: string) {
+  // ================= REFUND COURSE =================
+  refundCourse: async (studentId: string, courseId: string) => {
     const payment = await prisma.payment.findFirst({
       where: {
         studentId,
         courseId,
-        status: "COMPLETED",
+        status: PaymentStatus.COMPLETED,
       },
     });
 
     if (!payment) {
-      throw new CustomAppError(400, "No payment found");
+      throw new CustomAppError(400, "Payment not found");
     }
 
     if (!payment.stripePaymentId) {
-      throw new CustomAppError(400, "Invalid Stripe payment ID");
+      throw new CustomAppError(400, "Invalid Stripe payment");
     }
 
-    // 1. Stripe refund first
     await stripe.refunds.create({
       payment_intent: payment.stripePaymentId,
     });
 
-    // 2. DB update in transaction
     await prisma.$transaction(async (tx) => {
       await tx.payment.update({
         where: { id: payment.id },
         data: {
-          status: "REFUNDED",
+          status: PaymentStatus.REFUNDED,
         },
       });
 
-      await tx.enrollment.delete({
+      await tx.enrollment.updateMany({
         where: {
-          studentId_courseId: {
-            studentId,
-            courseId,
-          },
+          studentId,
+          courseId,
+        },
+        data: {
+          status: EnrollmentStatus.CANCELLED,
         },
       });
     });
 
-    return { message: "Refund successful" };
+    return {
+      message: "Refund successful",
+    };
   },
 };

@@ -135,3 +135,28 @@ export interface IApiResponse<T> {
 }
 
 
+
+
+
+export type TPublicCourseResponse = {
+  id: string;
+  title: string;
+  description: string;
+  slug: string;
+  thumbnail: string | null;
+  price: number;
+  enrollments: number;
+  category: string | null;
+  instructor: string | null;
+  instructorAvatar: string | null;
+};
+
+export type TGetAllPublicCoursesResponse = {
+  data: TPublicCourseResponse[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+};

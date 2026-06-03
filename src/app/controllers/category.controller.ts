@@ -11,13 +11,13 @@ import { sendResponse } from "../utils/sendResponse";
 export const categoryController = {
   // ============================== GET ALL Categories ==============================
   getCategories: catchAsyncHandler(async (req: Request, res: Response) => {
-    const categories = await categoryService.getAllCategories(req.query);
-    sendResponse(res, 200, "Categories fetched successfully", categories);
+    const { data, meta } = await categoryService.getAllCategories(req.query);
+    sendResponse(res, 200, "Categories fetched successfully", data, meta);
   }),
 
   // ============================== CREATE Category ==============================
   createCategory: catchAsyncHandler(async (req: Request, res: Response) => {
-    const category = await categoryService.createCategory(req.body);
+    const category = await categoryService.createCategory(req.body as any);
     sendResponse(res, 201, "Category created successfully", category);
   }),
 

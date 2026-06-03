@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { courseController } from "../controllers/course.controller";
-import { authentication, authorization, } from "../middlewares/auth.middleware";
+import { authentication, authorization } from "../middlewares/auth.middleware";
 import { validate } from "../middlewares/validate.middleware";
 import { Role } from "@prisma/client";
 
@@ -9,11 +9,65 @@ import {
   updateCourseValidation,
   completeLessonValidation,
 } from "../validations/course.validation";
+
 import { upload } from "../utils/cloudinary";
 
 const router = Router();
 
-// ================= CREATE COURSE =================
+/* =========================================================
+   PUBLIC COURSES API
+========================================================= */
+
+// GET all public courses
+router.get("/", courseController.getAllPublicCourses);
+
+// GET single course by slug (PUBLIC)
+router.get("/slug/:slug", courseController.getCourseBySlug);
+
+
+/* =========================================================
+   STUDENT API
+========================================================= */
+
+// GET enrolled courses
+router.get(
+  "/me/enrolled",
+  authentication,
+  authorization(Role.student, Role.instructor),
+  courseController.getStudentEnrolledCourses
+);
+
+// GET enrolled course modules
+router.get(
+  "/me/:courseId/modules",
+  authentication,
+  authorization(Role.student, Role.instructor),
+  courseController.getStudentEnrolledCourseModules
+);
+
+// POST complete lesson
+router.post(
+  "/me/lesson/complete",
+  authentication,
+  authorization(Role.student),
+  validate(completeLessonValidation),
+  courseController.completeLesson
+);
+
+
+/* =========================================================
+   INSTRUCTOR API
+========================================================= */
+
+// GET instructor courses
+router.get(
+  "/instructor/me",
+  authentication,
+  authorization(Role.instructor),
+  courseController.getAllInstructorCourses
+);
+
+// CREATE course
 router.post(
   "/",
   authentication,
@@ -23,38 +77,9 @@ router.post(
   courseController.createCourse
 );
 
-// ================= MY COURSES =================
-router.get(
-  "/my-courses",
-  authentication,
-  courseController.getMyCourses
-);
-
-// ================= COMPLETE LESSON =================
-router.post(
-  "/complete-lesson",
-  authentication,
-  validate(completeLessonValidation),
-  courseController.completeLesson
-);
-
-// ================= GET ALL PUBLIC COURSES =================
-router.get("/", courseController.getAllPublicCourses);
-
-// ================= GET ALL INSTRUCTOR COURSES =================
-router.get("/instructor", authentication, authorization(Role.instructor), courseController.getInstructorCourses);
-
-// ================= TOGGLE PUBLISH =================
+// UPDATE course (BY ID)
 router.patch(
-  "/:slug/toggle-publish",
-  authentication,
-  authorization(Role.instructor),
-  courseController.togglePublish
-);
-
-// ================= UPDATE COURSE =================
-router.patch(
-  "/:slug",
+  "/:id",
   authentication,
   authorization(Role.instructor),
   upload.single("thumbnail"),
@@ -62,19 +87,20 @@ router.patch(
   courseController.updateCourse
 );
 
-// ================= DELETE COURSE =================
+// TOGGLE publish (BY ID)
+router.patch(
+  "/:id/toggle",
+  authentication,
+  authorization(Role.instructor),
+  courseController.togglePublish
+);
+
+// DELETE course (BY ID)
 router.delete(
-  "/:slug",
+  "/:id",
   authentication,
   authorization(Role.admin, Role.instructor),
   courseController.deleteCourse
 );
 
-// ================= GET COURSE BY SLUG =================
-router.get(
-  "/:slug",
-
-  courseController.getCourseBySlug
-);
-
-export const courseRouter: Router = router;
+export const courseRouter = router;

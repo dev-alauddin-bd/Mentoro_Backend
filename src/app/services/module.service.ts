@@ -4,6 +4,7 @@
 
 import { prisma } from "../../lib/prisma";
 import { CustomAppError } from "../errors/customError";
+import { getQueryObject, IQuery } from "../utils/query";
 
 export const moduleService = {
   // ============================== ADD MODULE ==============================
@@ -21,7 +22,7 @@ export const moduleService = {
       orderBy: { order: "desc" }
     });
 
-    const nextOrder = lastModule ? lastModule.order + 1 : 0;
+    const nextOrder = lastModule && (lastModule.order + 1) 
 
     return prisma.module.create({
       data: {
@@ -80,50 +81,70 @@ export const moduleService = {
   },
 
   // ============================== GET MODULES BY COURSE ==============================
-  getModulesByCourseId: async (courseId: string) => {
-    const modules = await prisma.module.findMany({
-      where: { courseId },
-      select: {
-        id: true,
-        title: true,
-        order: true,
-        _count: { select: { lessons: true } },
-        lessons: {
-          select: {
-            id: true,
-            title: true,
-            order: true,
-            duration: true
-          },
-          orderBy: { order: "asc" }
-        }
-      },
-      orderBy: { order: "asc" }
-    });
-
-    return { modules };
+  getModulesByCourseId: async (courseId: string, query: IQuery) => {
+    const q = getQueryObject(query);
+    const page = Number(q.page || 1);
+    const limit = Number(q.limit || 10);
+    const skip = (page - 1) * limit;
+    const where: any = { courseId };
+    const [modules, total] = await Promise.all([
+      prisma.module.findMany({
+        where,
+        skip,
+        take: limit,
+        select: {
+          id: true,
+          title: true,
+          order: true,
+          _count: { select: { lessons: true } },
+          lessons: {
+            select: {
+              id: true,
+              title: true,
+              order: true,
+              duration: true
+            },
+            orderBy: { order: "asc" }
+          }
+        },
+        orderBy: { order: "asc" }
+      }),
+      prisma.module.count({ where })
+    ]);
+    const meta = { page, limit, totalPages: Math.ceil(total / limit) };
+    return { data: modules, meta };
   },
 
   // ============================== GET ALL MODULES ==============================
-  getAllModules: async (courseId?: string) => {
-    return prisma.module.findMany({
-      where: {
-        ...(courseId && { courseId })
-      },
-      select: {
-        id: true,
-        title: true,
-        courseId: true,
-        order: true,
-        isDeleted: true,
-        course: {
-          select: { title: true }
+  getAllModules: async (query: IQuery) => {
+    const q = getQueryObject(query);
+    const page = Number(q.page || 1);
+    const limit = Number(q.limit || 10);
+    const skip = (page - 1) * limit;
+    const where: any = {};
+    const [modules, total] = await Promise.all([
+      prisma.module.findMany({
+        where,
+        skip,
+        take: limit,
+        select: {
+          id: true,
+          title: true,
+          courseId: true,
+          order: true,
+          isDeleted: true,
+          course: {
+            select: { title: true }
+          },
+          _count: {
+            select: { lessons: true }
+          }
         },
-        _count: {
-          select: { lessons: true }
-        }
-      },
-      orderBy: { order: "asc" }
-    });
+        orderBy: { order: "asc" }
+      }),
+      prisma.module.count({ where })
+    ]);
+    const meta = { page, limit, totalPages: Math.ceil(total / limit) };
+    return { data: modules, meta };
   }
 };

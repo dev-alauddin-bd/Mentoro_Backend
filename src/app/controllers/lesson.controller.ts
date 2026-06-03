@@ -43,8 +43,8 @@ export const lessonController = {
   // ============================== GET ALL Lessons ==============================
   getAllLessons: catchAsyncHandler(async (req: Request, res: Response) => {
     const { moduleId } = req.query;
-    const lessons = await lessonService.getAllLessons(moduleId as string);
-    sendResponse(res, 200, "Lessons fetched successfully", lessons);
+    const { data, meta } = await lessonService.getAllLessons(moduleId as string);
+    sendResponse(res, 200, "Lessons fetched successfully", data, meta);
   })
 
 }

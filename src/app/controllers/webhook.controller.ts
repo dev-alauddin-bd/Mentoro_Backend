@@ -4,6 +4,7 @@
 
 import { Request, Response } from "express";
 import { stripe } from "../../lib/stripe";
+import { EnrollmentStatus } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import logger from "../../lib/logger";
 export const webhookController = {
@@ -71,8 +72,7 @@ export const webhookController = {
               id: payment.enrollId,
             },
             data: {
-              status: "COMPLETED",
-              paymentId: payment.id,
+              status: EnrollmentStatus.ACTIVE,
             },
           });
         });

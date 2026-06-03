@@ -17,8 +17,8 @@ export const assignmentController = {
 
   // ============================== GET Instructor Assignments ==============================
   getAssignmentsIntoIntrutorCourses: catchAsyncHandler(async (req: Request, res: Response) => {
-    const result = await AssignmentService.getAssignmentsIntoIntrutorCourses(req.user!.id, req.query);
-    sendResponse(res, 200, "Instructor assignments fetched successfully", result);
+    const { data, meta } = await AssignmentService.getAssignmentsIntoIntrutorCourses(req.user!.id, req.query);
+    sendResponse(res, 200, "Instructor assignments fetched successfully", data, meta);
   }),
 
   // ============================== UPDATE Assignment ==============================

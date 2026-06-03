@@ -7,3 +7,4 @@ dist
 /generated/prisma
 logs/
 logs/*
+coverage/

@@ -8,6 +8,14 @@ import { catchAsyncHandler } from "../utils/catchAsyncHandler";
 import { sendResponse } from "../utils/sendResponse";
 
 export const liveSessionController = {
+
+  // ============================== CREATE Session ==============================
+  createSession: catchAsyncHandler(async (req: Request, res: Response) => {
+    const result = await liveSessionService.createSession(req.body);
+    sendResponse(res, 201, "Session created successfully", result);
+  }),
+
+
   // ============================== REGISTER For Session ==============================
   registerForSession: catchAsyncHandler(async (req: Request, res: Response) => {
     const result = await liveSessionService.registerForSession(req.body);
@@ -16,8 +24,8 @@ export const liveSessionController = {
 
   // ============================== GET ALL Sessions ==============================
   getAllSessions: catchAsyncHandler(async (req: Request, res: Response) => {
-    const result = await liveSessionService.getAllSessions(req.query);
-    sendResponse(res, 200, "Sessions fetched successfully", result);
+    const { data, meta } = await liveSessionService.getAllSessions(req.query);
+    sendResponse(res, 200, "Sessions fetched successfully", data, meta);
   }),
 
   // ============================== GET Session By ID ==============================
@@ -26,12 +34,6 @@ export const liveSessionController = {
     sendResponse(res, 200, "Session fetched successfully", result);
   }),
 
-  // ============================== CREATE Session ==============================
-  createSession: catchAsyncHandler(async (req: Request, res: Response) => {
-    const result = await liveSessionService.createSession(req.body);
-
-    sendResponse(res, 201, "Session created successfully", result);
-  }),
 
   // ============================== UPDATE Session ==============================
   updateSession: catchAsyncHandler(async (req: Request, res: Response) => {

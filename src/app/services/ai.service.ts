@@ -40,9 +40,6 @@ const extractJSON = (text: string) => {
   return clean.slice(start, end + 1);
 };
 
-// ================= QUIZ CACHE =================
-const quizCache = new Map<string, { data: any; expires: number }>();
-const CACHE_TTL = 24 * 60 * 60 * 1000;
 
 // ================= CHAT ASSISTANT =================
 const chatAssistant = async (message: string, history: unknown[]) => {
@@ -137,7 +134,7 @@ const generateContent = async (topicOrDraft: string) => {
       - requirements = 3-5 items
       - targetAudience = 2-5 items
     `);
-
+    
     const chain = prompt
       .pipe(chatModel)
       .pipe(new StringOutputParser());

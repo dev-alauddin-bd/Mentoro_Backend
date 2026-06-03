@@ -1,5 +1,6 @@
 import { prisma } from "../../lib/prisma";
 import { CustomAppError } from "../errors/customError";
+import { getQueryObject, IQuery } from "../utils/query";
 
 export const AssignmentService = {
   // ================= CREATE ASSIGNMENT =================
@@ -20,10 +21,7 @@ export const AssignmentService = {
     });
 
     if (existingAssignment) {
-      throw new CustomAppError(
-        400,
-        "This module already contains an assignment"
-      );
+      throw new CustomAppError(400,"This module already contains an assignment");
     }
 
     return await prisma.assignment.create({
@@ -37,16 +35,17 @@ export const AssignmentService = {
   // ================= GET INSTRUCTOR ASSIGNMENTS =================
   async getAssignmentsIntoIntrutorCourses(
     instructorId: string,
-    query: Record<string, unknown> = {}
+    query: IQuery
   ) {
-    const page = Number(query.page) || 1;
-    const limit = Number(query.limit) || 10;
+    const q = getQueryObject(query);
+    const page = Number(q.page || 1);
+    const limit = Number(q.limit || 10);
     const skip = (page - 1) * limit;
 
     const where = {
       module: {
         course: {
-          instructorId, // FIXED
+          instructorId, 
         },
       },
     };
@@ -81,10 +80,8 @@ export const AssignmentService = {
     ]);
 
     return {
-      assignments,
-      total,
-      page,
-      totalPages: Math.ceil(total / limit),
+      data: assignments,
+      meta: { page, limit, totalPages: Math.ceil(total / limit) },
     };
   },
 
@@ -121,9 +118,10 @@ export const AssignmentService = {
       throw new CustomAppError(404, "Assignment not found");
     }
 
-    return await prisma.assignment.delete({
+    const deleted = await prisma.assignment.delete({
       where: { id },
     });
+    return { data: deleted };
   },
 
   // ================= SUBMIT ASSIGNMENT =================

@@ -1,9 +1,11 @@
 import { ICourse } from "./course.interface";
 
 export interface ICategory {
-  id: string;
+  id?: string;
   name: string;
+  slug: string;
   courses?: ICourse[];
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt?: Date;
+  isActive?: boolean;
+  updatedAt?: Date;
 }
