@@ -1,4 +1,4 @@
-import express, { Application, Request, Response, NextFunction } from "express";
+import express, { Application, Request, Response } from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import rateLimit from "express-rate-limit";
@@ -14,24 +14,25 @@ import env from "./app/config";
 const app: Application = express();
 
 // ==============================
-// TRUST PROXY
+// TRUST PROXY (for reverse proxy / cloud)
 // ==============================
 app.set("trust proxy", 1);
 
 // ==============================
-// STATIC FILES
-// ==============================
-app.use(
-  "/public",
-  express.static(path.join(process.cwd(), "src", "app", "public"))
-);
-
-// ==============================
-// SECURITY (Helmet)
+// SECURITY HEADERS (Helmet - optimized)
 // ==============================
 app.use(
   helmet({
-    contentSecurityPolicy: false, // optional: production debug friendly
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'"],
+        objectSrc: ["'none'"],
+        baseUri: ["'self'"],
+        frameAncestors: ["'none'"],
+      },
+    },
+    crossOriginResourcePolicy: { policy: "cross-origin" },
     hsts: {
       maxAge: 31536000,
       includeSubDomains: true,
@@ -41,66 +42,84 @@ app.use(
 );
 
 // ==============================
-// CORS (IMPORTANT)
+// CORS (production safe + fast)
 // ==============================
 app.use(
   cors({
-    origin: env.frontendUrl,
+    origin: (origin, callback) => {
+      const allowedOrigins = [env.frontendUrl];
+
+      if (!origin || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(new Error("CORS Not Allowed"));
+    },
     credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
   })
 );
 
 // ==============================
-// BASIC MIDDLEWARES
+// BODY PARSER (IMPORTANT for performance)
 // ==============================
+app.use(express.json({ limit: "10kb" }));
+app.use(express.urlencoded({ extended: true, limit: "10kb" }));
 app.use(cookieParser());
-app.use(express.json());
 
 // ==============================
-// RATE LIMIT (GLOBAL)
+// STATIC FILES
+// ==============================
+app.use(
+  "/public",
+  express.static(path.join(process.cwd(), "src", "app", "public"), {
+    maxAge: "1d", // caching boost
+  })
+);
+
+// ==============================
+// GLOBAL RATE LIMIT (OPTIMIZED)
 // ==============================
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: env.nodeEnv === "production" ? 200 : 10000,
-  message: {
-    success: false,
-    message: "Too many requests. Try later.",
-  },
-  skip: () => env.nodeEnv !== "production",
+  max: env.nodeEnv === "production" ? 200 : 2000,
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 
 app.use(limiter);
 
 // ==============================
-// AUTH RATE LIMIT
+// AUTH RATE LIMIT (STRICT)
 // ==============================
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: env.nodeEnv === "production" ? 100 : 10000,
-  skipSuccessfulRequests: true,
-  skip: () => env.nodeEnv !== "production",
+  max: env.nodeEnv === "production" ? 50 : 1000,
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 
 app.use("/api/auth", authLimiter);
 
 // ==============================
-// WEBHOOK (before sanitization)
+// WEBHOOK (BEFORE SANITIZATION)
 // ==============================
 app.use("/webhook", webhookRouter);
 
 // ==============================
-// SANITIZATION
+// SANITIZATION (XSS / INJECTION protection)
 // ==============================
 app.use(sanitizeRequest);
 
 // ==============================
-// HEALTH CHECK
+// HEALTH CHECK (FAST RESPONSE)
 // ==============================
-app.get("/health", (req: Request, res: Response) => {
-  res.json({
+app.get("/health", (_req: Request, res: Response) => {
+  res.status(200).json({
     success: true,
     message: "Server healthy 🚀",
     uptime: process.uptime(),
+    memory: process.memoryUsage().rss,
   });
 });
 
@@ -110,9 +129,9 @@ app.get("/health", (req: Request, res: Response) => {
 app.use("/api", baseRouter);
 
 // ==============================
-// ROOT
+// ROOT ROUTE
 // ==============================
-app.get("/", (req: Request, res: Response) => {
+app.get("/", (_req: Request, res: Response) => {
   res.json({
     success: true,
     message: "Mentoro API v3 🚀",
@@ -120,12 +139,12 @@ app.get("/", (req: Request, res: Response) => {
 });
 
 // ==============================
-// 404
+// 404 HANDLER
 // ==============================
 app.use((req: Request, res: Response) => {
   res.status(404).json({
     success: false,
-    message: `Route ${req.originalUrl} not found`,
+    message: `Route not found: ${req.originalUrl}`,
   });
 });
 
