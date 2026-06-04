@@ -72,18 +72,21 @@ export const categoryService = {
           isActive: true,
           createdAt: true,
           updatedAt: true,
-          _count: { select: { courses: true } },
         },
         orderBy: { name: "asc" },
         skip: computedSkip,
-        take: Number(limit),
+        ...(limit ? { take: Number(limit) } : {}),
       }),
       prisma.category.count({ where }),
     ]);
 
     return {
       data: categories,
-      meta: { page: Number(page), limit: Number(limit), totalPages: Math.ceil(total / Number(limit)) },
+      meta: {
+        page: Number(page) || 1,
+        limit: limit ? Number(limit) : total,
+        totalPages: limit ? Math.ceil(total / Number(limit)) : 1,
+      },
     };
   },
 
