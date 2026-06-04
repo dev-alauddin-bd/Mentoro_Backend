@@ -20,7 +20,7 @@ By integrating modern technologies like LangChain for AI features and Cloudinary
 | 🔐 **Advanced Authentication** | Secure JWT‑based authentication (access/refresh tokens) combined with Firebase integration for social logins. |
 | 👥 **Role‑Based Access Control** | Strictly enforced guards for `student`, `instructor`, and `admin` roles, along with comprehensive User Management (block/unblock, role updates). |
 | ☁️ **Media Management** | Integrated with **Cloudinary** and **Multer** for reliable image and video uploads directly from the client or server. |
-| 🤖 **AI Orchestration (RAG)** | Context‑aware AI Mentor, smart semantic search, and automated MCQ generation using **LangChain** and **OpenRouter**. |
+| 🤖 **AI Orchestration (RAG)** | Context‑aware AI Mentor, smart semantic search and generate title based on keyword using all features of  input text as context-aware with **OpenRouter**. |
 | 💼 **Jobs & Careers Management** | Complete CRUD operations for job postings, along with applicant tracking and resume submissions. |
 | 📹 **Live Sessions** | Specialized endpoints for instructors to schedule, manage, and register students for live classes. |
 | 📊 **Platform Analytics** | Aggregated analytics endpoints providing key metrics on user growth, revenue generation, and **Mentoro** enrollments. |
@@ -29,68 +29,6 @@ By integrating modern technologies like LangChain for AI features and Cloudinary
 | 🛡️ **Data Validation** | Strict runtime validation of incoming requests and payloads using **Zod**. |
 | 🚀 **Performance Optimized** | Rate limiting, Redis caching (optional), and optimized Prisma queries for fast response times.
 
----
-
-## 📁 Project Architecture
-
-```plaintext
-mentoro-backend/
-├── prisma/
-│   └── schema.prisma            # Database schema mapping (15+ core models)
-├── src/
-│   ├── index.ts                 # Express app initialization & middleware stack
-│   ├── server.ts                # Entry point & server bootstrap
-│   ├── lib/
-│   │   ├── prisma.ts            # Prisma client singleton instance
-│   │   └── stripe.ts            # Stripe SDK integration
-│   └── app/
-│       ├── controllers/         # Request handling for Auth, Mentoro, AI, Users
-│       ├── services/            # Core business logic, DB queries, LangChain flows
-│       ├── routes/              # Modular API route definitions
-│       ├── middlewares/         # Auth verification, Role guards, Error handling
-│       ├── validations/         # Zod schemas for rigorous input validation
-│       └── utils/               # Utilities (Response formatting, async wrappers)
-```
-
----
-
-## 🔌 Core API Endpoints
-
-### 📚 Mentoro Management
-- `GET /api/v1/mentoro` - Fetch catalog with search, filters, and pagination
-- `POST /api/v1/mentoro` - Create a new **Mentoro** (Instructor/Admin)
-- `GET /api/v1/mentoro/:id` - Get comprehensive **Mentoro** details
-- `PUT /api/v1/mentoro/:id` - Update **Mentoro** information
-- `DELETE /api/v1/mentoro/:id` - Remove a **Mentoro`
-
-### 🤖 AI Integration
-- `POST /api/v1/ai/chat` - Interact with the context‑aware AI Mentor
-- `GET /api/v1/ai/generate-quiz/:lessonId` - Dynamically generate a quiz
-- `GET /api/v1/ai/search` - Perform semantic search across the platform
-
-### 🔐 Authentication & Users
-- `POST /api/v1/auth/signup` - Register an account
-- `POST /api/v1/auth/login` - Authenticate and retrieve JWTs
-- `GET /api/v1/users/me` - Retrieve current user profile
-- `PATCH /api/v1/users/:id/role` - Update user role (Admin only)
-- `PATCH /api/v1/users/:id/status` - Block/unblock users (Admin only)
-
-### 💼 Jobs & Careers
-- `GET /api/v1/jobs` - List open job positions
-- `POST /api/v1/jobs` - Create a new job listing
-- `POST /api/v1/jobs/apply` - Submit a job application
-
-### 📹 Live Sessions
-- `POST /api/v1/live-sessions` - Schedule a new live session
-- `POST /api/v1/live-sessions/register` - Register for a session
-
-### 📊 Platform Analytics
-- `GET /api/v1/analytics/stats` - Fetch core platform metrics
-- `GET /api/v1/analytics/users` - Fetch user growth trends
-
-### 💳 Payments & Enrollments
-- `POST /api/v1/enrollments` - Enroll in free or paid **Mentoro**s (triggers Stripe)
-- `POST /api/webhook` - Stripe webhook listener
 
 ---
 
@@ -108,30 +46,29 @@ Create a `.env` file in the root directory and configure the following variables
 
 ```env
 # Database (Prisma)
-DATABASE_URL=postgres://user:password@host:port/database?sslmode=verify-full
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/mentoro"
+JWT_ACCESS_SECRET=""
+JWT_REFRESH_SECRET=""
+JWT_ACCESS_SECRET_EXPIRES_IN=""
+REFRESH_TOKEN_EXPIRES_IN=""
+FRONTEND_URL="
+BCRYPTBCRYPT_SALT_ROUNDS=""
+PORT=""
+NODE_ENV=""
 
-# Auth Configuration
-JWT_ACCESS_SECRET=your_jwt_access_secret
-JWT_REFRESH_SECRET=your_jwt_refresh_secret
-JWT_ACCESS_SECRET_EXPIRES_IN=1d
-REFRESH_TOKEN_EXPIRES_IN=7d
+GOOGLE_API_KEY=""
+OPENROUTER_API_KEY=""
+STRIPE_SECRET_KEY=""
+STRIPE_WEBHOOK_SECRET=""
+BACKEND_URL="
 
-# Server Configuration
-PORT=5000
-NODE_ENV=development
-FRONTEND_URL=http://localhost:3000
-BACKEND_URL=http://localhost:5000
+REDIS_URL="
 
-# AI & LLM (OpenRouter)
-OPENROUTER_API_KEY=your_openrouter_api_key
 
-# Payments (Stripe)
-STRIPE_SECRET_KEY=sk_test_...
-STRIPE_WEBHOOK_SECRET=whsec_...
+CLOUDINARY_CLOUD_NAME=""
+CLOUDINARY_API_KEY=""
+CLOUDINARY_API_SECRET=""
 
-# Third-party Integrations
-GOOGLE_API_KEY=your_google_api_key
-REDIS_URL=rediss://...
 ```
 
 ### 3. Database Setup
@@ -170,16 +107,25 @@ The API was stress‑tested with **k6**. The load test simulated 100 virtual use
 
 The full HTML report can be viewed at https://dev-alauddin-bd.github.io/Mentoro_Backend/benchmark_report.html
 
+```bash
+npm run k6
+```
+
+---
+
 ## 🧪 Unit Testing
 
 All tests are written with **Jest** and achieve > 99% coverage. Run them with:
 
+![Unit Test Report](./unit_testing_report.png)
+
 ```bash
-npm test
+npm run test
+npm run test:watch
+npm run test:coverage
 ```
 
-![k6 Benchmark Report](file:///C:/Users/debal/.gemini/antigravity-ide/brain/28f98035-d487-45b5-a826-c05d6aa9e623/k6_benchmark_1780513655867.png)
+---
 
-<p align="center">
-  <b>Built with ❤️ for modern education.</b>
-</p>
+## Made by [Alauddin-dev](https://github.com/dev-alauddin-bd)
+
