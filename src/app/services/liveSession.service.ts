@@ -114,19 +114,11 @@ export const liveSessionService = {
   },
   // New function to create a session with combined date and time fields
   createSession: async (payload: any) => {
-    // Combine date and time into ISO strings if provided
-    const sessionDateTime = payload.sessionDate && payload.sessionTime ? `${payload.sessionDate}T${payload.sessionTime}` : undefined;
-    const registrationDeadlineDateTime = payload.registrationDeadlineDate && payload.registrationDeadlineTime ? `${payload.registrationDeadlineDate}T${payload.registrationDeadlineTime}` : undefined;
     const data: any = {
       ...payload,
-      sessionDate: sessionDateTime ?? payload.sessionDate,
-      registrationDeadline: registrationDeadlineDateTime ?? payload.registrationDeadlineDate,
-      // Remove raw split fields
-      sessionTime: undefined,
-      registrationDeadlineTime: undefined,
-      registrationDeadlineDate: undefined,
     };
-    return await prisma.liveSession.create({ data: data as unknown as Prisma.LiveSessionCreateInput });
+    console.log("data", data);
+    return await prisma.liveSession.create({ data: data });
   },
 
   // Alias for test compatibility

@@ -8,15 +8,16 @@ import { authorization, authentication } from "../middlewares/auth.middleware";
 import { validate } from "../middlewares/validate.middleware";
 import { UserRole } from "../interfaces/user.interface";
 import {
-
+  createLiveSessionValidation,
   updateLiveSessionValidation,
   registerSessionValidation,
 } from "../validations/liveSession.validation";
+import { upload } from "../utils/cloudinary";
 
 const router = express.Router();
 
 // ============================== CREATE Session (INSTRUCTOR) ==============================
-router.post("/", authentication, authorization(UserRole.INSTRUCTOR), liveSessionController.createSession);
+router.post("/", authentication, authorization(UserRole.INSTRUCTOR), upload.single("thumbnail"),  liveSessionController.createSession);
 
 // ============================== GET ALL Sessions ==============================
 router.get("/", liveSessionController.getAllSessions);

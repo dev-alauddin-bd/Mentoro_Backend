@@ -6,11 +6,15 @@ import { Request, Response } from "express";
 import { liveSessionService } from "../services/liveSession.service";
 import { catchAsyncHandler } from "../utils/catchAsyncHandler";
 import { sendResponse } from "../utils/sendResponse";
+import { CustomAppError } from "../errors/customError";
 
 export const liveSessionController = {
 
   // ============================== CREATE Session ==============================
   createSession: catchAsyncHandler(async (req: Request, res: Response) => {
+    if (!req.file) {
+      throw new CustomAppError(400,"Thumbnail is required");
+    }
     const result = await liveSessionService.createSession(req.body);
     sendResponse(res, 201, "Session created successfully", result);
   }),
@@ -37,6 +41,9 @@ export const liveSessionController = {
 
   // ============================== UPDATE Session ==============================
   updateSession: catchAsyncHandler(async (req: Request, res: Response) => {
+    if(req.file){
+      req.body.thumbnail = req.file.path;
+    }
     const result = await liveSessionService.updateSession(req.params.id as string, req.body);
     sendResponse(res, 200, "Session updated successfully", result);
   }),
