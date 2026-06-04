@@ -30,19 +30,47 @@ By integrating modern technologies like LangChain for AI features and Cloudinary
 
 | Feature | Description |
 |---|---|
-| 📚 **Complete Mentoro CRUD** | Manage Categories, **Mentoro**, Modules, and Lessons with rich metadata, search, and pagination capabilities. |
-| 🔐 **Advanced Authentication** | Secure JWT‑based authentication (access/refresh tokens) combined with Firebase integration for social logins. |
-| 👥 **Role‑Based Access Control** | Strictly enforced guards for `student`, `instructor`, and `admin` roles, along with comprehensive User Management (block/unblock, role updates). |
-| ☁️ **Media Management** | Integrated with **Cloudinary** and **Multer** for reliable image and video uploads directly from the client or server. |
-| 🤖 **AI Orchestration (RAG)** | Context‑aware AI Mentor, smart semantic search and generate title based on keyword using all features of  input text as context-aware with **OpenRouter**. |
-| 💼 **Jobs & Careers Management** | Complete CRUD operations for job postings, along with applicant tracking and resume submissions. |
-| 📹 **Live Sessions** | Specialized endpoints for instructors to schedule, manage, and register students for live classes. |
-| 📊 **Platform Analytics** | Aggregated analytics endpoints providing key metrics on user growth, revenue generation, and **Mentoro** enrollments. |
-| 💳 **Secure Payments** | **Stripe** integration for handling checkout sessions and webhooks for success, failure, and refund scenarios. |
-| 📊 **Progress Tracking** | Sophisticated enrollment tracking allowing students to follow linear progressions and complete lessons. |
-| 🛡️ **Data Validation** | Strict runtime validation of incoming requests and payloads using **Zod**. |
-| 🚀 **Performance Optimized** | Rate limiting, Redis caching (optional), and optimized Prisma queries for fast response times.
+| 📚 **Complete Mentoro CRUD** | Manage Categories, Mentoro, Modules, and Lessons with rich metadata, search, filtering, and pagination support. |
+| 🔐 **Advanced Authentication** | Secure JWT-based authentication (access + refresh tokens) with optional Firebase social login integration. |
+| 👥 **Role-Based Access Control** | Strict authorization system for `student`, `instructor`, and `admin` roles with full user management (block/unblock, role update). |
+| ☁️ **Media Management** | Cloudinary + Multer integration for optimized image and video upload handling. |
+| 🤖 **AI Assistant (Chatbot + Content Engine)** | Context-aware AI chatbot powered by OpenRouter and Prisma. It handles user conversations, generates course content, and creates live session content using intelligent prompt-based AI workflows. |
+| 💼 **Jobs & Careers Management** | Full CRUD system for job postings with applicant tracking and resume submission support. |
+| 📹 **Live Sessions** | Instructor-based live class scheduling, registration, and management system. |
+| 📊 **Platform Analytics** | Aggregated insights for users, enrollments, and platform performance metrics. |
+| 💳 **Secure Payments** | Stripe integration with checkout sessions, webhook handling, and refund support. |
+| 📈 **Progress Tracking** | Student learning progress tracking with structured course completion flow. |
+| 🛡️ **Data Validation** | Strong runtime validation using Zod schemas for all incoming requests. |
+| 🚀 **Performance Optimized** | Rate limiting, Redis caching (optional), and optimized Prisma queries for scalability and speed. |
+---
 
+## 🧪 Tech Stack Overview
+
+| Technology | Purpose |
+|-----------|---------|
+| **Node.js** | JavaScript runtime environment for server-side execution |
+| **Express 5** | Fast, minimal, and flexible Node.js web framework |
+| **TypeScript 5.9** | Strongly typed JavaScript for better scalability and maintainability |
+| **Prisma 7** | Next-generation ORM for PostgreSQL with type-safe queries |
+| **PostgreSQL** | Reliable, high-performance relational database |
+| **LangChain** | Framework for building LLM-powered applications |
+| **OpenRouter / Google GenAI / OpenAI** | AI model integration for intelligent features |
+| **Cloudinary** | Cloud-based image and video storage & optimization |
+| **Stripe** | Secure payment processing and subscription handling |
+| **Zod** | Schema validation and request payload validation |
+| **JWT (jsonwebtoken)** | Secure authentication using access & refresh tokens |
+| **bcryptjs** | Password hashing for secure authentication |
+| **Multer** | File upload handling middleware |
+| **Redis (ioredis)** | Caching and performance optimization |
+| **Winston** | Logging system for debugging and monitoring |
+| **Helmet** | Security middleware for HTTP headers |
+| **CORS** | Cross-origin resource sharing control |
+| **express-rate-limit** | API rate limiting for security |
+| **cookie-parser** | Cookie handling middleware |
+| **Jest** | Unit testing framework for backend testing |
+| **ts-jest** | TypeScript support for Jest |
+| **ESLint** | Code linting and quality enforcement |
+| **k6** | Load testing and performance benchmarking tool |
 
 ---
 
@@ -98,21 +126,6 @@ npm run dev
 
 ---
 
-## 🧪 Tech Stack Overview
-
-| Technology | Purpose |
-|-----------|---------|
-| **Express 5** | Robust, fast, and minimal HTTP web framework |
-| **Prisma 7** | Next‑generation Node.js and TypeScript ORM |
-| **PostgreSQL** | Powerful, open source object‑relational database system |
-| **LangChain & OpenRouter** | Framework for developing applications powered by language models |
-| **Cloudinary** | Cloud‑based image and video management |
-| **Stripe** | Payment processing infrastructure |
-| **Zod** | TypeScript‑first schema declaration and validation |
-| **TypeScript 5.9** | Static typing for enhanced developer experience and code quality |
-
----
-
 ## 📊 Performance Benchmark
 
 The API was stress‑tested with **k6**. The load test simulated 100 virtual users for 3 minutes, covering all major endpoints.
@@ -141,5 +154,5 @@ npm run test:coverage
 
 ---
 
-## Made by [Alauddin-dev](https://github.com/dev-alauddin-bd)
+## Made by [Md Alauddin](https://github.com/dev-alauddin-bd)
 
