@@ -166,7 +166,7 @@ npm run dev
 
 The API was stress‑tested with **k6**. The load test simulated 100 virtual users for 3 minutes, covering all major endpoints.
 
-![k6 Benchmark Report](./k6_benchmark.png)
+![k6 Benchmark Report](./benchmark_report.png)
 
 The full HTML report can be viewed at https://dev-alauddin-bd.github.io/Mentoro_Backend/benchmark_report.html
 
