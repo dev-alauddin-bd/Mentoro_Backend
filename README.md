@@ -12,10 +12,6 @@
 - [Performance Benchmark](#-performance-benchmark)
 - [Unit Testing](#-unit-testing)
 - [Made by](#-made-by)
-
-
-> A robust, modular, and scalable RESTful API powering the Mentoro Learning Management System (LMS). Built with **Express 5**, **Prisma 7**, **PostgreSQL**, and **Advanced AI Orchestration**.
-
 ---
 
 ## 📖 About The Project
