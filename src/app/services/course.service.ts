@@ -4,9 +4,23 @@ import { createSlug } from "../utils/generateSlug";
 import { CustomAppError } from "../errors/customError";
 import { getQueryObject, IQuery } from "../utils/query";
 import { Course } from "@prisma/client";
-import { TGetAllPublicCoursesResponse, TPublicCourseResponse } from "../interfaces/course.interface";
 
 
+const clearCourseCaches = async () => {
+  try {
+    const keys = await redisClient.keys("public_courses:*");
+    const instructorKeys = await redisClient.keys("instructor_courses:*");
+    const courseKeys = await redisClient.keys("course:*");
+
+    const allKeys = [...keys, ...instructorKeys, ...courseKeys];
+
+    if (allKeys.length > 0) {
+      await redisClient.del(...allKeys);
+    }
+  } catch (err) {
+    console.error("Cache clear failed:", err);
+  }
+};
 
 /* ================= SERVICE ================= */
 
@@ -22,14 +36,23 @@ export const courseService = {
       },
     });
 
-    
+    // Clear all public course caches
+   clearCourseCaches();
     return course;
   },
 
   /* ================= GET ALL PUBLIC COURSES ================= */
   async getAllPublicCourses(query: IQuery) {
-
     const q = getQueryObject(query);
+
+    const cacheKey = `public_courses:${JSON.stringify(q)}`;
+
+    // 1. Check Redis
+    const cachedData = await redisClient.get(cacheKey);
+
+    if (cachedData) {
+      return JSON.parse(cachedData);
+    }
 
     const page = Number(q.page || 1);
     const limit = Number(q.limit || 10);
@@ -91,7 +114,7 @@ export const courseService = {
       prisma.course.count({ where }),
     ]);
 
-    const formattedCourses: TPublicCourseResponse[] = courses.map((course) => ({
+    const formattedCourses = courses.map((course) => ({
       id: course.id,
       title: course.title,
       description: course.description,
@@ -104,7 +127,7 @@ export const courseService = {
       instructorAvatar: course.instructor?.avatar ?? null,
     }));
 
-    const result: TGetAllPublicCoursesResponse = {
+    const result = {
       data: formattedCourses,
       meta: {
         total,
@@ -114,12 +137,29 @@ export const courseService = {
       },
     };
 
+    // 2. Save Redis (10 minutes)
+    await redisClient.set(
+      cacheKey,
+      JSON.stringify(result),
+      "EX",
+      600
+    );
+
     return result;
   },
 
   // ================== GET ALL INSTRUCTOR COURSES ==================
   async getAllInstructorCourses(instructorId: string, query: IQuery) {
     const q = getQueryObject(query);
+
+    const cacheKey = `instructor_courses:${instructorId}:${JSON.stringify(q)}`;
+
+    // 1. Check Redis
+    const cachedData = await redisClient.get(cacheKey);
+
+    if (cachedData) {
+      return JSON.parse(cachedData);
+    }
 
     const page = Number(q.page || 1);
     const limit = Number(q.limit || 10);
@@ -128,7 +168,6 @@ export const courseService = {
     const where: any = {
       instructorId,
       isDeleted: false,
-
     };
 
     if (q.search) {
@@ -186,7 +225,7 @@ export const courseService = {
       prisma.course.count({ where }),
     ]);
 
-    const formattedCourses: TPublicCourseResponse[] = courses.map((course) => ({
+    const formattedCourses = courses.map((course) => ({
       id: course.id,
       title: course.title,
       description: course.description,
@@ -203,13 +242,11 @@ export const courseService = {
       requirements: course.requirements,
       targetAudience: course.targetAudience,
       tags: course.tags,
-
       createdAt: course.createdAt,
       updatedAt: course.updatedAt,
-
     }));
 
-    const result: TGetAllPublicCoursesResponse = {
+    const result = {
       data: formattedCourses,
       meta: {
         total,
@@ -219,9 +256,16 @@ export const courseService = {
       },
     };
 
+    // 2. Save to Redis (10 min)
+    await redisClient.set(
+      cacheKey,
+      JSON.stringify(result),
+      "EX",
+      60 * 60
+    );
+
     return result;
   },
-
   /* ================= COURSE DETAIL ================= */
   /* ================= COURSE DETAIL ================= */
   async getCourseBySlug(slug: string) {
@@ -480,7 +524,7 @@ export const courseService = {
       };
     });
 
- 
+
 
     return formattedCourses;
   },
@@ -578,12 +622,6 @@ export const courseService = {
         ? 0
         : Math.round((completedLessons / totalLessons) * 100);
 
-    console.log("course", course);
-    console.log("progressPercent", progressPercent);
-    console.log("totalLessons", totalLessons);
-    console.log("completedLessons", completedLessons);
-    console.log("modules", modules);
-
     return {
       id: course.id,
       title: course.title,
@@ -621,6 +659,8 @@ export const courseService = {
       data,
     });
 
+    clearCourseCaches();
+
     return updatedCourse;
   },
 
@@ -630,13 +670,15 @@ export const courseService = {
       where: { id: courseId },
       data: { isDeleted: true },
     });
-   
+
+    clearCourseCaches();
+
     return updatedCourse;
   },
-
   // ============================== TOGGLE PUBLISH ==============================
   async togglePublish(courseId: string) {
     const course = await prisma.course.findUnique({ where: { id: courseId } });
+
     if (!course) throw new CustomAppError(404, "Course not found");
 
     const updatedCourse = await prisma.course.update({
@@ -644,7 +686,8 @@ export const courseService = {
       data: { isPublished: !course.isPublished },
     });
 
+   clearCourseCaches();
+
     return updatedCourse;
   }
-
 };

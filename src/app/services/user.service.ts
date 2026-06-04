@@ -14,7 +14,7 @@ const getAllUsers = async (
   const skip = (page - 1) * limit;
 
   // ================= ROLE BASED ACCESS =================
-  let where: any = {};
+  const where: any = {};
 
   if (requester.role === Role.instructor) {
     // instructor can only see students

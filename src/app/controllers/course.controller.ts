@@ -21,7 +21,7 @@ export const courseController = {
 
   // ================== GET ALL PUBLIC COURSES ==================
   getAllPublicCourses: catchAsyncHandler(async (req, res) => {
-    
+
     const { data, meta } = await courseService.getAllPublicCourses(req.query as any);
     sendResponse(res, 200, "Successfully fetched all public courses", data, meta);
   }),
@@ -30,8 +30,8 @@ export const courseController = {
   // ======================== GET ALL INSTRUCTOR COURSES ========================
   getAllInstructorCourses: catchAsyncHandler(async (req, res) => {
     const instructorId = req.user!.id;
-    const {data,meta} = await courseService.getAllInstructorCourses(instructorId, req.query as any);
-    sendResponse(res, 200, "Successfully fetched all instructor courses", data,meta);
+    const { data, meta } = await courseService.getAllInstructorCourses(instructorId, req.query as any);
+    sendResponse(res, 200, "Successfully fetched all instructor courses", data, meta);
   }),
 
   // ================== GET SINGLE COURSE BY SLUG ==================
@@ -49,7 +49,7 @@ export const courseController = {
 
   // ================== GET STUDENT ENROLLED COURSE MODULES ==================
   getStudentEnrolledCourseModules: catchAsyncHandler(async (req, res) => {
-    console.log("req.params", req.params);
+   
     const studentId = req.user!.id;
     const result = await courseService.getStudentEnrolledCourseModules(studentId, req.params.courseId as string);
     sendResponse(res, 200, "Successfully fetched student enrolled course modules", result);
@@ -67,6 +67,9 @@ export const courseController = {
 
   // ================== UPDATE COURSE ==================
   updateCourse: catchAsyncHandler(async (req, res) => {
+    if (req.file?.path) {
+      req.body.thumbnail = req.file.path;
+    }
     const result = await courseService.updateCourse(req.params.id as string, req.body);
     sendResponse(res, 200, "Successfully updated course", result);
   }),

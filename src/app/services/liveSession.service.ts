@@ -58,6 +58,7 @@ export const liveSessionService = {
       totalPages: Math.ceil(total / limit)
     };
 
+
     return { data: sessionsWithCount, meta };
 
   },

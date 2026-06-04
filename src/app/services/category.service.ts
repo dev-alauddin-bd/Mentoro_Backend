@@ -1,4 +1,5 @@
 import { prisma } from "../../lib/prisma";
+import redisClient from "../../lib/redis";
 import { CustomAppError } from "../errors/customError";
 import { ICategory } from "../interfaces/category.interface";
 import { getQueryObject, IQuery } from "../utils/query";
@@ -6,90 +7,116 @@ import { getQueryObject, IQuery } from "../utils/query";
 export const categoryService = {
 
   // ============================== CREATE CATEGORY ==============================
-  createCategory: async (data: ICategory) => {
-    // check if category already exists
-    const existingCategory = await prisma.category.findUnique({
-      where: { name: data.name },
-    });
+createCategory: async (data: ICategory) => {
+  // check if category already exists
+  const existingCategory = await prisma.category.findUnique({
+    where: { name: data.name },
+  });
 
-    if (existingCategory) {
-      throw new CustomAppError(400, "Category name already exists.");
-    }
+  if (existingCategory) {
+    throw new CustomAppError(400, "Category name already exists.");
+  }
 
-    const newCategory = await prisma.category.create({
-      data: {
-        name: data.name,
-        slug: data.slug,
-        isActive: data.isActive ?? true,
+  const newCategory = await prisma.category.create({
+    data: {
+      name: data.name,
+      slug: data.slug,
+      isActive: data.isActive ?? true,
+    },
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      isActive: true,
+      createdAt: true,
+      updatedAt: true,
+    },
+  });
+
+  // ================= REDIS CACHE INVALIDATE =================
+  const keys = await redisClient.keys("categories:*");
+
+  if (keys.length) {
+    await redisClient.del(...keys);
+  }
+
+  return newCategory;
+},
+
+
+  // ============================== GET ALL CATEGORIES ==============================
+getAllCategories: async (query: IQuery) => {
+  const q = getQueryObject(query);
+  const { limit, page, search } = q;
+
+  const cacheKey = `categories:${JSON.stringify(q)}`;
+
+  // 1. Check Redis
+  const cached = await redisClient.get(cacheKey);
+
+  if (cached) {
+    return JSON.parse(cached);
+  }
+
+  const computedSkip =
+    page && limit ? (Number(page) - 1) * Number(limit) : 0;
+
+  const where: any = {};
+
+  if (search) {
+    where.OR = [
+      {
+        name: {
+          contains: search,
+          mode: "insensitive",
+        },
       },
+      {
+        description: {
+          contains: search,
+          mode: "insensitive",
+        },
+      },
+    ];
+  }
+
+  const [categories, total] = await Promise.all([
+    prisma.category.findMany({
+      where,
       select: {
         id: true,
         name: true,
-        slug: true,
         isActive: true,
         createdAt: true,
         updatedAt: true,
       },
-    });
+      orderBy: { name: "asc" },
+      skip: computedSkip,
+      ...(limit ? { take: Number(limit) } : {}),
+    }),
 
-    return newCategory;
-  },
+    prisma.category.count({ where }),
+  ]);
 
+  const result = {
+    data: categories,
+    meta: {
+      page: Number(page) || 1,
+      limit: limit ? Number(limit) : total,
+      totalPages: limit ? Math.ceil(total / Number(limit)) : 1,
+    },
+  };
 
+  // 2. Save Redis (1 hour)
+  await redisClient.set(
+    cacheKey,
+    JSON.stringify(result),
+    "EX",
+    60 * 60
+  );
 
-  // ============================== GET ALL CATEGORIES ==============================
-  getAllCategories: async (query: IQuery) => {
-
-    const q = getQueryObject(query);
-    const { limit, page, search } = q;
-    const computedSkip = (page && limit) ? (Number(page) - 1) * Number(limit) : 0;
-
-    const where: any = {};
-
-    if (search) {
-      where.OR = [
-        {
-          name: {
-            contains: search,
-            mode: "insensitive",
-          },
-        },
-        {
-          description: {
-            contains: search,
-            mode: "insensitive",
-          },
-        },
-      ];
-    }
-
-    const [categories, total] = await Promise.all([
-      prisma.category.findMany({
-        where,
-        select: {
-          id: true,
-          name: true,
-          isActive: true,
-          createdAt: true,
-          updatedAt: true,
-        },
-        orderBy: { name: "asc" },
-        skip: computedSkip,
-        ...(limit ? { take: Number(limit) } : {}),
-      }),
-      prisma.category.count({ where }),
-    ]);
-
-    return {
-      data: categories,
-      meta: {
-        page: Number(page) || 1,
-        limit: limit ? Number(limit) : total,
-        totalPages: limit ? Math.ceil(total / Number(limit)) : 1,
-      },
-    };
-  },
-
+  return result;
+},
 
 
   // ============================== UPDATE CATEGORY ==============================

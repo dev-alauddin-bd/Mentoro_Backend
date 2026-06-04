@@ -28,7 +28,7 @@ const getModel = () => {
 
 // ================= SAFE JSON EXTRACTOR =================
 const extractJSON = (text: string) => {
-  let clean = text.trim().replace(/```json|```/g, "");
+  const clean = text.trim().replace(/```json|```/g, "");
 
   const start = clean.indexOf("{") !== -1 ? clean.indexOf("{") : clean.indexOf("[");
   const end = clean.lastIndexOf("}");

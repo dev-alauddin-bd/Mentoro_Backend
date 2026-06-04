@@ -13,7 +13,7 @@ export const verifyAccessToken = (token: string) => {
   try {
     // env.jwt.secret is the access secret (short‑lived)
     return jwt.verify(token, env.jwt.secret as string) as { id: string };
-  } catch (err) {
+  } catch (_err) {
     throw new CustomAppError(401, 'Invalid or expired access token');
   }
 };
@@ -28,7 +28,7 @@ export const verifyRefreshToken = (token: string) => {
   try {
     const secret = env.jwt.refreshSecret || env.jwt.secret;
     return jwt.verify(token, secret) as { id: string };
-  } catch (err) {
+  } catch (_err) {
     throw new CustomAppError(401, 'Invalid or expired refresh token');
   }
 };
@@ -36,9 +36,9 @@ export const verifyRefreshToken = (token: string) => {
 /**
  * Decode a token without verification – useful for inspection only.
  */
-export const decodeToken = (token: string) => {
+export const decodeToken = <T = unknown>(token: string): T | null => {
   try {
-    return jwt.decode(token) as Record<string, any> | null;
+    return jwt.decode(token) as T | null;
   } catch {
     return null;
   }
