@@ -8,6 +8,8 @@ import env from "../config";
 export const paymentController = {
   // ================= CREATE CHECKOUT =================
   createCheckout: catchAsyncHandler(async (req: Request, res: Response) => {
+    console.log(req.body, "check");
+
     const studentId = req.user!.id;
     const { courseId, enrollId } = req.body;
 

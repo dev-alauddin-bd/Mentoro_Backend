@@ -7,11 +7,12 @@ export const enrollController = {
   // ================= ENROLL COURSE =================
   enrollCourse: catchAsyncHandler(async (req: Request, res: Response) => {
     const studentId = req.user!.id;
-    const { courseId } = req.body;
+    const { slug } = req.body;
 
-    const result = await enrollService.enrollCourse(studentId, courseId);
+    const {data} = await enrollService.enrollCourse(studentId, slug);
 
-    sendResponse(res, 201, "Enrollment processed", result);
+    sendResponse(res, 201, "Enrollment processed", data);
+  
   }),
 
   // ================= GET MY ENROLLMENTS =================

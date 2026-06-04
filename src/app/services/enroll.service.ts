@@ -5,9 +5,9 @@ import { getQueryObject, IQuery } from "../utils/query";
 
 export const enrollService = {
   // ================= ENROLL COURSE =================
-  enrollCourse: async (studentId: string, courseId: string) => {
+  enrollCourse: async (studentId: string, slug: string) => {
     const course = await prisma.course.findUnique({
-      where: { id: courseId },
+      where: {slug },
     });
 
     if (!course) throw new CustomAppError(404, "Course not found");
@@ -22,14 +22,14 @@ export const enrollService = {
     if (course.price === 0) {
       const enrollment = await prisma.enrollment.upsert({
         where: {
-          studentId_courseId: { studentId, courseId },
+          studentId_courseId: { studentId, courseId: course.id },
         },
         update: {
           status: EnrollmentStatus.ACTIVE,
         },
         create: {
           studentId,
-          courseId,
+          courseId: course.id,
           status: EnrollmentStatus.ACTIVE,
           email: user.email,
           name: user.name,
@@ -44,14 +44,14 @@ export const enrollService = {
     // PAID COURSE → PENDING ONLY
     const enrollment = await prisma.enrollment.upsert({
       where: {
-        studentId_courseId: { studentId, courseId },
+        studentId_courseId: { studentId, courseId: course.id },
       },
       update: {
         status: EnrollmentStatus.PENDING,
       },
       create: {
         studentId,
-        courseId,
+        courseId:course.id,
         status: EnrollmentStatus.PENDING,
         email: user.email,
         name: user.name,
