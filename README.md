@@ -1,4 +1,18 @@
+![License](https://img.shields.io/github/license/dev-alauddin-bd/Mentoro_Backend)
+![Stars](https://img.shields.io/github/stars/dev-alauddin-bd/Mentoro_Backend?style=social)
+![Last Commit](https://img.shields.io/github/last-commit/dev-alauddin-bd/Mentoro_Backend)
+
 # 🚀 Mentoro — Backend API
+
+## Table of Contents
+- [About The Project](#-about-the-project)
+- [Key Features](#-key-features)
+- [Quick Start](#-quick-start)
+- [Tech Stack Overview](#-tech-stack-overview)
+- [Performance Benchmark](#-performance-benchmark)
+- [Unit Testing](#-unit-testing)
+- [Made by](#-made-by)
+
 
 > A robust, modular, and scalable RESTful API powering the Mentoro Learning Management System (LMS). Built with **Express 5**, **Prisma 7**, **PostgreSQL**, and **Advanced AI Orchestration**.
 
