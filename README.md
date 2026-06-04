@@ -168,7 +168,7 @@ The API was stress‑tested with **k6**. The load test simulated 100 virtual use
 
 ![k6 Benchmark Report](./k6_benchmark.png)
 
-The full HTML report can be viewed at [`benchmark_report.html`](./benchmark_report.html).
+The full HTML report can be viewed at https://dev-alauddin-bd.github.io/Mentoro_Backend/benchmark_report.html
 
 ## 🧪 Unit Testing
 
