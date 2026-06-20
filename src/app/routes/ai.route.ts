@@ -7,6 +7,7 @@ import { UserRole } from "../interfaces/user.interface";
 import { generateContentSchema } from "../validations/ai.validation";
 import { aiController } from "../controllers/ai.controller";
 
+
 const router = Router();
 
 // ================= CHAT (PUBLIC SSE) =================

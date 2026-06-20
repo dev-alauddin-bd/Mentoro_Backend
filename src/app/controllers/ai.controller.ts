@@ -56,7 +56,7 @@ export const aiController = {
           `data: ${JSON.stringify({
             error: error instanceof Error ? error.message : "Unknown error",
           })}\n\n`
-        );
+        )
       } catch { }
 
       res.end();
@@ -85,6 +85,5 @@ console.log("result====", result)
 
       sendResponse(res, 200, "Live session generated successfully", result);
     }
-  )
-
-}
+  ),
+};
