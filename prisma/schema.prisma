@@ -379,6 +379,17 @@ model LiveRegistration {
   @@unique([email, sessionId])
   @@map("live_registrations")
 }
+model ChatMessage {
+  id        String   @id @default(uuid())
+  sessionId String
+  userId    String?   // optional when logged in
+  role      String    // "user" | "assistant"
+  content   String
+  createdAt DateTime @default(now())
+
+  @@index([sessionId])
+}
+
 
 
 

@@ -19,10 +19,24 @@ jest.mock("../../lib/logger", () => ({
   warn: jest.fn(),
 }));
 
-// IMPORTANT: mock full chain
-jest.mock("@langchain/openai", () => ({
-  ChatOpenAI: jest.fn(() => ({})),
-}));
+// IMPORTANT: mock full chain and assign mockModel to global within the factory
+jest.mock("@langchain/openai", () => {
+  const m = {
+    invoke: jest.fn().mockResolvedValue({
+      content: "mocked response",
+      tool_calls: [],
+    }),
+    stream: jest.fn(),
+  };
+  (global as any).mockModel = m;
+  return {
+    ChatOpenAI: class {
+      bindTools = jest.fn().mockImplementation(function(this: any) { return this; });
+      invoke = m.invoke;
+      stream = m.stream;
+    }
+  };
+});
 
 // Mock PromptTemplate to return a fresh mock chain per call
 jest.mock("@langchain/core/prompts", () => {
@@ -158,7 +172,8 @@ describe("AiService FULL FIX", () => {
   // ================= CHAT ASSISTANT =================
   it("chatAssistant success", async () => {
     const mockStream = { async *[Symbol.asyncIterator]() { yield "hello"; } };
-    mockChain.stream = jest.fn().mockResolvedValueOnce(mockStream);
+    (global as any).mockModel.invoke.mockResolvedValueOnce({ content: "answer", tool_calls: [] });
+    (global as any).mockModel.stream.mockResolvedValueOnce(mockStream);
     
     const res = await AiService.chatAssistant("hi", []);
     expect(res).toBe(mockStream);
@@ -174,7 +189,7 @@ describe("AiService FULL FIX", () => {
   });
 
   it("chatAssistant throws error", async () => {
-    mockChain.stream = jest.fn().mockRejectedValueOnce(new Error("chat error"));
+    (global as any).mockModel.invoke.mockRejectedValueOnce(new Error("chat error"));
     await expect(AiService.chatAssistant("hi", [])).rejects.toThrow("chat error");
   });
 });
