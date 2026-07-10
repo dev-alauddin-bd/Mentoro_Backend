@@ -15,7 +15,8 @@
     "test:coverage": "jest --coverage",
     "k6": "k6 run /k6-benchmark.js",
     "seed": "ts-node prisma/seed.ts",
-    "test:rag": "ts-node prisma/test-rag.ts"
+    "test:rag": "ts-node prisma/test-rag.ts",
+    "test:ai": "ts-node prisma/test-ai.ts"
   },
   "keywords": [],
   "author": "",

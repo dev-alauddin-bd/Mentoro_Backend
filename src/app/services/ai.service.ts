@@ -99,27 +99,37 @@ const chatAssistant = async (
       name: "searchCourses",
       description: "Search for courses by title, description, or category matching the query. Returns a list of courses with titles, descriptions, slugs, categories, prices, and IDs.",
       schema: z.object({
-        query: z.string().describe("The search query or keyword"),
+        query: z.string().describe("The search query or keyword. Use 'all' or empty string to fetch all available courses."),
       }),
       func: async ({ query }) => {
         try {
-          const courses = await prisma.course.findMany({
-            where: {
-              isPublished: true,
-              isDeleted: false,
-              OR: [
-                { title: { contains: query, mode: "insensitive" } },
-                { description: { contains: query, mode: "insensitive" } },
-                {
-                  category: {
-                    name: { contains: query, mode: "insensitive" },
-                  },
+          const cleanQuery = (query || "").trim().toLowerCase();
+          const generalKeywords = ["all", "available", "courses", "course", "any", "list", "show", "get", "কি কি", "সব", "কোর্স", "এভেইলেবল", "আছে", "খুঁজছি", "নিন্মোক্ত", "লিস্ট"];
+          const isGeneralQuery = !cleanQuery || generalKeywords.includes(cleanQuery);
+
+          const whereClause: any = {
+            isPublished: true,
+            isDeleted: false,
+          };
+
+          if (!isGeneralQuery) {
+            whereClause.OR = [
+              { title: { contains: query, mode: "insensitive" } },
+              { description: { contains: query, mode: "insensitive" } },
+              {
+                category: {
+                  name: { contains: query, mode: "insensitive" },
                 },
-              ],
-            },
+              },
+            ];
+          }
+
+          const courses = await prisma.course.findMany({
+            where: whereClause,
             include: {
               category: { select: { name: true } },
             },
+            take: 20, // limit to top 20 courses to prevent prompt size issues
           });
           return JSON.stringify(courses);
         } catch (err: any) {
