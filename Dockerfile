@@ -1,28 +1,38 @@
-# Stage 1: Builder
 FROM node:22-alpine AS builder
+
 WORKDIR /app
-# Use npm instead of pnpm
-COPY package.json package-lock.json* ./
-RUN npm install --legacy-peer-deps
+
+COPY package.json yarn.lock ./
+
+RUN yarn install --frozen-lockfile
+
 COPY prisma ./prisma/
 COPY prisma.config.ts ./
-# Prisma v7 build-time generate
-RUN DATABASE_URL="postgresql://placeholder:5432" npx prisma generate
-COPY . .
-RUN npm run build
 
-# Stage 2: Production
+RUN DATABASE_URL="postgresql://placeholder:5432" yarn prisma generate
+
+COPY . .
+
+RUN yarn build
+
+# =========================
+
 FROM node:22-alpine
+
 WORKDIR /app
+
 ENV NODE_ENV=production
-COPY package.json package-lock.json* prisma.config.ts ./ 
+
+COPY package.json yarn.lock ./
 COPY prisma ./prisma/
-RUN npm install --omit=dev --legacy-peer-deps
-# Re-link Prisma Client for production
-RUN DATABASE_URL="postgresql://placeholder:5432" npx prisma generate
+COPY prisma.config.ts ./
+
+RUN yarn install --production --frozen-lockfile
+
+RUN DATABASE_URL="postgresql://placeholder:5432" yarn prisma generate
+
 COPY --from=builder /app/dist ./dist
 
 EXPOSE 5000
 
-# Try dist/server.js first
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/server.js"]
+CMD ["sh", "-c", "yarn prisma migrate deploy && node dist/server.js"]

@@ -19,8 +19,8 @@ const env = {
   },
 
   bcrypt: {
-    saltRounds: process.env.BCRYPT_SALT_ROUNDS,
-  },
+  saltRounds: Number(process.env.BCRYPT_SALT_ROUNDS ?? 10),
+},
 
   stripe: {
     secretKey: process.env.STRIPE_SECRET_KEY,
