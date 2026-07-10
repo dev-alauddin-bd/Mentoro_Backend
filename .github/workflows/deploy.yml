@@ -1,34 +1,51 @@
-name: CI/CD Pipeline
+name: VPS CI/CD Pipeline
 
 on:
   push:
-    branches: [main] # Automatically trigger the pipeline when code is pushed to the main branch
+    branches: [main]
 
 jobs:
-  # Job 1: Build Test (The Continuous Integration part)
-  # This job ensures that your Dockerfile is valid and the app can build without errors.
+  # =========================
+  # Job 1: Build Test (CI)
+  # =========================
   test-build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4 # Downloads your code to the GitHub runner
+        uses: actions/checkout@v4
 
-      - name: Build Check
+      - name: Docker Build Test
         run: |
-          echo "Starting Build Test..."
-          # This simulates a production build to catch errors before actual deployment
-          docker build -t backend-test . 
-          echo "Build Successful!"
+          echo "Starting Docker Build Test..."
+          docker build -t mentoro-backend-test .
+          echo "Docker Build Successful!"
 
-  # Job 2: Deployment (The Continuous Deployment part)
-  # This job only starts if the 'test-build' job finishes successfully.
+
+  # =========================
+  # Job 2: Deploy to VPS (CD)
+  # =========================
   deploy:
-    needs: test-build # Prevents deployment if the build test fails
+    needs: test-build
     runs-on: ubuntu-latest
+
     steps:
-      - name: Deploy to Render
-        # This triggers a deployment on Render using a Deploy Hook.
-        # You need to add RENDER_DEPLOY_HOOK_URL to your GitHub Repository Secrets.
-        run: |
-          curl -X POST ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
-          echo "Deployment Triggered on Render!"
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@v1.0.3
+
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+
+          script: |
+            cd /var/www/Mentoro_Backend
+
+            echo "Pulling latest code..."
+            git pull origin main
+
+            echo "Building Docker container..."
+            docker compose down
+            docker compose up -d --build
+
+            echo "Deployment completed!"
