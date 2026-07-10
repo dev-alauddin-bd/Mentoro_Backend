@@ -11,7 +11,7 @@ import { generateTokens } from "../utils/generateTokens";
 /* ================= REGISTER ================= */
 const register = async (payload: IUser) => {
   logger.info("Signup:", payload.email);
-console.log(payload)
+
   const existingUser = await prisma.user.findUnique({
     where: { email: payload.email },
   });
@@ -19,14 +19,13 @@ console.log(payload)
   if (existingUser) {
     throw new CustomAppError(400, "User already exists");
   }
-console.log(env)
-console.log(env.bcrypt.saltRounds)
+
   const hashedPassword = await bcrypt.hash(
     payload.password,
     env.bcrypt.saltRounds
   );
 
-console.log(hashedPassword)
+
   const user = await prisma.user.create({
     data: {
       name: payload.name,
