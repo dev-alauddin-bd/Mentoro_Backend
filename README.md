@@ -30,7 +30,8 @@ By integrating modern technologies like LangChain for AI features and Cloudinary
 | 🔐 **Advanced Authentication** | Secure JWT-based authentication (access + refresh tokens) with optional Firebase social login integration. |
 | 👥 **Role-Based Access Control** | Strict authorization system for `student`, `instructor`, and `admin` roles with full user management (block/unblock, role update). |
 | ☁️ **Media Management** | Cloudinary + Multer integration for optimized image and video upload handling. |
-| 🤖 **AI Assistant (Chatbot + Content Engine)** | Context-aware AI chatbot powered by OpenRouter and Prisma. It handles user conversations, generates course content, and creates live session content using intelligent prompt-based AI workflows. |
+| 🤖 **AI Assistant (Chatbot & Content Engine)** | Context-aware AI chatbot powered by Gemini / OpenRouter and Prisma. It handles user conversations, generates course content, and supports direct LMS tool execution (enrolling users, generating Stripe checkout payment links). |
+| 🧠 **Database‑Backed RAG System** | Semantic search using Google Gemini (`gemini-embedding-2`) or OpenAI embeddings, stored natively in PostgreSQL (`Float[]` column) with in-memory cosine similarity and Upstash Redis caching (1-hour TTL). |
 | 💼 **Jobs & Careers Management** | Full CRUD system for job postings with applicant tracking and resume submission support. |
 | 📹 **Live Sessions** | Instructor-based live class scheduling, registration, and management system. |
 | 📊 **Platform Analytics** | Aggregated insights for users, enrollments, and platform performance metrics. |
@@ -80,33 +81,48 @@ npm install
 ```
 
 ### 2. Environment Variables
-Create a `.env` file in the root directory and configure the following variables:
+Create a `.env` file in the root directory and configure the following variables (example values shown below):
 
 ```env
-# Database (Prisma)
-DATABASE_URL="postgresql://postgres:postgres@localhost:5432/mentoro"
-JWT_ACCESS_SECRET=""
-JWT_REFRESH_SECRET=""
-JWT_ACCESS_SECRET_EXPIRES_IN=""
-REFRESH_TOKEN_EXPIRES_IN=""
-FRONTEND_URL="
-BCRYPTBCRYPT_SALT_ROUNDS=""
-PORT=""
-NODE_ENV=""
+# Server Configuration
+PORT=5000
+NODE_ENV=development
+BACKEND_URL=http://localhost:5000
+FRONTEND_URL=http://localhost:3000
 
-GOOGLE_API_KEY=""
-OPENROUTER_API_KEY=""
-STRIPE_SECRET_KEY=""
-STRIPE_WEBHOOK_SECRET=""
-BACKEND_URL="
+# Database Configuration (PostgreSQL / Prisma Postgres)
+DATABASE_URL="postgresql://postgres:password@localhost:5432/mentoro?schema=public"
 
-REDIS_URL="
+# Security & Encryption
+BCRYPT_SALT_ROUNDS=10
+JWT_ACCESS_SECRET="your_jwt_access_secret_key_here_must_be_strong"
+JWT_REFRESH_SECRET="your_jwt_refresh_secret_key_here_must_be_strong"
+JWT_ACCESS_SECRET_EXPIRES_IN="1d"
+REFRESH_TOKEN_EXPIRES_IN="7d"
 
+# Rate Limiting
+RATE_LIMIT_WINDOW_MS=900000
+RATE_LIMIT_MAX_REQUESTS=100
 
-CLOUDINARY_CLOUD_NAME=""
-CLOUDINARY_API_KEY=""
-CLOUDINARY_API_SECRET=""
+# Upload File Limits
+MAX_FILE_SIZE=50000000
+MAX_VIDEO_SIZE=1000000000
 
+# AI Services
+GOOGLE_API_KEY="AIzaSyYourGoogleApiKeyHere"
+OPENROUTER_API_KEY="sk-or-v1-yourOpenRouterApiKeyHere"
+
+# Redis Cache Setup (Upstash / Local Redis)
+REDIS_URL="redis://default:yourpassword@localhost:6379"
+
+# Stripe Payments Integration
+STRIPE_SECRET_KEY="sk_test_yourStripeSecretKeyHere"
+STRIPE_WEBHOOK_SECRET="whsec_yourStripeWebhookSecretHere"
+
+# Media Storage
+CLOUDINARY_CLOUD_NAME="your_cloudinary_cloud_name"
+CLOUDINARY_API_KEY="your_cloudinary_api_key"
+CLOUDINARY_API_SECRET="your_cloudinary_api_secret"
 ```
 
 ### 3. Database Setup
@@ -118,6 +134,12 @@ npx prisma generate     # Generate Prisma Client types
 ### 4. Run Development Server
 ```bash
 npm run dev
+```
+
+### 5. Verify RAG & Caching System
+You can test the RAG ingestion, semantic similarity search, and Redis caching end-to-end:
+```bash
+npm run test:rag
 ```
 
 ---

@@ -39,7 +39,9 @@ export const aiController = {
         }
       }
 
-      const stream = await AiService.chatAssistant(message, history || [], user);
+      const sessionId = req.body.sessionId || req.body.chatId || req.body.conversationId || user?.id;
+
+      const stream = await AiService.chatAssistant(message, history || [], user, sessionId);
 
       for await (const chunk of stream) {
         const text = typeof chunk === "string" ? chunk : (chunk as any).content || "";

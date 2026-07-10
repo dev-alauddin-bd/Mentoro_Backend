@@ -515,12 +515,18 @@ const chatAssistant = async (
       }
     });
 
+    const userContext = user
+      ? `The current user is logged in.\nUser Profile: ${JSON.stringify(user)}`
+      : `The current user is NOT logged in. If they try to perform actions requiring authentication (e.g. checking progress, viewing enrollments, enrolling in a course, updating payment), explain politely that they must log in first.`;
+
     const systemPrompt = `You are CourseMaster AI Assistant, a helpful and premium virtual learning mentor on the Mentoro LMS platform.
 You have access to tools that interact directly with the LMS database.
 Always use appropriate tools to query courses, lessons, upcoming live sessions, or manage student enrollments and payments.
-If the user wants to check progress, see their enrollments, enroll in a course, or update a payment, check if they are logged in.
 If the user profile is available, address them by name (e.g. "Hello John!"). If they are not logged in, explain politely that they must log in to perform that action.
-When suggesting or showing courses, you can reference their details or IDs. Always respond clearly, naturally, and in the same language as the user.`;
+When suggesting or showing courses, you can reference their details or IDs. Always respond clearly, naturally, and in the same language as the user.
+
+Current Context:
+${userContext}`;
 
     let messages: any[] = [
       new SystemMessage(systemPrompt),
