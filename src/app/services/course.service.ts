@@ -37,7 +37,8 @@ export const courseService = {
     });
 
     // Clear all public course caches
-   clearCourseCaches();
+    clearCourseCaches();
+
     return course;
   },
 

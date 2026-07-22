@@ -15,6 +15,7 @@ const globalErrorHandler = (
    
   _next: NextFunction
 ) => {
+  console.log(err)
   let statusCode = 500;
   let message = "Something went wrong!";
   let errorSources: { path: string; message: string }[] = [
@@ -193,6 +194,9 @@ const globalErrorHandler = (
     errorSources = [{ path: "", message }];
   }
 
+  // console.log(message)
+  // console.log(statusCode)
+  // console.log(errorSources)
   // ========================
   // Final Response
   // ========================

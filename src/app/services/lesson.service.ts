@@ -116,6 +116,7 @@ export const lessonService = {
         order: nextOrder,
       },
     });
+
     return { data: created };
   },
 
@@ -140,6 +141,7 @@ export const lessonService = {
       where: { id: lessonId },
       data: payload,
     });
+
     return { data: updated };
   },
 
@@ -156,6 +158,7 @@ export const lessonService = {
     const deleted = await prisma.lesson.delete({
       where: { id: lessonId },
     });
+
     return { data: deleted };
   },
 };

@@ -33,7 +33,7 @@ router.post("/register", authentication, validate(registerSessionValidation), li
 router.get("/:id", liveSessionController.getSessionById);
 
 // ============================== UPDATE Session (INSTRUCTOR) ==============================
-router.patch("/:id", authentication, authorization(UserRole.INSTRUCTOR), validate(updateLiveSessionValidation), liveSessionController.updateSession);
+router.patch("/:id", authentication, authorization(UserRole.INSTRUCTOR),upload.single("thumbnail"), validate(updateLiveSessionValidation), liveSessionController.updateSession);
 
 // ============================== DELETE Session (INSTRUCTOR) ==============================
 router.delete("/:id", authentication, authorization(UserRole.INSTRUCTOR), liveSessionController.deleteSession);

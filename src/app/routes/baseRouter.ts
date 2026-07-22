@@ -15,7 +15,6 @@ import { paymentRouter } from "./payment.route";
 import { enrollRouter } from "./enroll.route";
 import { lessonRouter } from "./lesson.route";
 import { studentSubmissionRouter } from "./studentSubmission.route";
-import { aiRouter } from "./ai.route";
 import { liveSessionRoutes } from "./liveSession.route";
 
 const router = Router();
@@ -30,7 +29,6 @@ const routes = [
   { path: "/enrollments", handler: enrollRouter },
   { path: "/assignments", handler: assignmentRouter },
   { path: "/reviews", handler: reviewRoutes },
-  { path: "/ai", handler: aiRouter },
   { path: "/live-sessions", handler: liveSessionRoutes },
   { path: "/dashboard", handler: dashboardRouter },
   { path: "/users", handler: userRouter },

@@ -44,6 +44,7 @@ const env = {
   openRouter: {
     apiKey: process.env.OPENROUTER_API_KEY,
   },
+  aiServiceUrl: process.env.AI_SERVICE_URL || "http://localhost:8000",
 };
 
 export default env;
